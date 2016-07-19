@@ -54,13 +54,33 @@
 
 (defrecord KeyedResponse [name key items]
   ResponseType
-  (identify [self m]
+  (identify [_ m]
     (contains? m key))
-  (extract [self m]
+  (extract [_ m]
     (reduce #(assoc %1 (:spec-key %2) (get-in m (:torn-key %2) (:default %2)))
             {} items))
-  (coerce [self m]
+
+  (coerce [_ m]
     (let [coerced-resp (coerce-response m items)]
+      (if (s/valid? name coerced-resp)
+        coerced-resp
+        (throw (ex-info "Invalid API Response" (s/explain-data name coerced-resp)))))))
+
+(defrecord KeyedListResponse [name key items]
+  ResponseType
+  (identify [_ m]
+    (contains? m key))
+  (extract [_ m]
+    (transform [(sp/view #(-> % (get key) vec))
+                (sp/transformed sp/ALL (fn [[k v]]
+                                         (assoc v :torn-id (-> k clojure.core/name Long/parseLong))))
+                sp/ALL]
+               (fn [attack]
+                 (reduce #(assoc %1 (:spec-key %2) (get-in attack (:torn-key %2) (:default %2)))
+                         {} items))
+               m))
+  (coerce [_ m]
+    (let [coerced-resp (mapv #(coerce-response % items) m)]
       (if (s/valid? name coerced-resp)
         coerced-resp
         (throw (ex-info "Invalid API Response" (s/explain-data name coerced-resp)))))))
@@ -78,7 +98,7 @@
 
 ;; Coercers
 
-(defn empty->0 [n] (if (string? n) 0 n))
+(defn empty->nil [n] (if (string? n) nil n))
 (defn nil->0 [n] (or n 0))
 (defn nil->empty [s] (or s ""))
 (defn timestamp->inst [n] (-> n (* 1000) (c/from-long)))
@@ -141,5 +161,17 @@
     (->RespItem [:defense_modifier] :player/defense-modifier int->pct ::required)
     (->RespItem [:speed_modifier] :player/speed-modifier int->pct ::required)]))
 
+(def attacks
+  (->KeyedListResponse
+   :resp/attacks
+   :attacks
+   [(->RespItem [:torn-id] :attack/torn-id identity ::required)
+    (->RespItem [:timestamp_started] :attack/timestamp-started timestamp->inst ::required)
+    (->RespItem [:timestamp_ended] :attack/timestamp-ended timestamp->inst ::required)
+    (->RespItem [:attacker_id] :attack/attacker empty->nil ::required)
+    (->RespItem [:defender_id] :attack/defender identity ::required)
+    (->RespItem [:result] :attack/result result-str->keyword ::required)
+    (->RespItem [:respect_gain] :attack/respect double ::required)]))
+
 (def resp-types
-  [basic-info player-info battle-stats])
+  [basic-info player-info battle-stats attacks])

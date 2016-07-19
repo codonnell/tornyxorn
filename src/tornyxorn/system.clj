@@ -29,7 +29,9 @@
      :update-creator (component/using
                       (new-update-creator {:req-chan req-chan
                                            :api-chan api-chan
-                                           :update-chan update-chan})
+                                           :update-chan update-chan
+                                           :faction-id (Integer. (env :faction-id))
+                                           :api-key (env :api-key)})
                       [:db :torn-api])
      :torn-api (component/using
                 (new-torn-api {:api-chan api-chan

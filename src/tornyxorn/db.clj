@@ -22,6 +22,10 @@
   (map->Datomic {:uri uri}))
 
 
+(defn add-tempid [data]
+  (assoc data :db/id (d/tempid :db.part/user)))
+
+
 (defn has-player-info?* [db torn-id]
   (not (nil? (d/q '[:find ?i .
                     :in $ ?id
@@ -54,7 +58,7 @@
 
 
 (defn add-player-tx [player]
-  [(assoc player :db/id (d/tempid :db.part/user))])
+  [(add-tempid player)])
 
 (defn add-player* [conn player]
   (d/transact conn (add-player-tx player)))
@@ -79,27 +83,53 @@
 
 
 ;; TODO: This needs a torn-id or api-key to work
-(defn update-battle-stats-tx [stats]
+(defn update-battle-stats-tx [torn-id stats]
   (let [parsed-stats (s/conform :resp/battle-stats stats)]
     (if-not (= ::s/invalid parsed-stats)
       [(assoc parsed-stats
               :player/last-battle-stats-update (to-date (t/now))
+              :player/torn-id torn-id
               :db/id (d/tempid :db.part/user))]
-      (throw (ex-info "Invalid battle stats" (s/explain-data :resp/battle-stats stats))))   ))
+      (throw (ex-info "Invalid battle stats" (s/explain-data :resp/battle-stats stats))))))
 
-(defn update-battle-stats* [conn stats]
-  (d/transact conn (update-battle-stats-tx stats)))
+(defn update-battle-stats* [conn torn-id stats]
+  (d/transact conn (update-battle-stats-tx torn-id stats)))
 
-(defn update-battle-stats [db stats]
-  (update-battle-stats* (:conn db) stats))
+(defn update-battle-stats [db torn-id stats]
+  (update-battle-stats* (:conn db) torn-id stats))
 
+
+(defn- remove-nil-attacker [attack]
+  (if (nil? (:attack/attacker attack))
+    (dissoc attack :attack/attacker)
+    attack))
+
+(defn schema-attack->db-attack [attack]
+  (as-> attack a
+    (assoc a
+           :attack/attacker {:player/torn-id (:attack/attacker attack)}
+           :attack/defender {:player/torn-id (:attack/defender attack)}
+           :attack/result [:db/ident (:attack/result attack)])
+    (update a :attack/timestamp-started to-date)
+    (update a :attack/timestamp-ended to-date)
+    (if (nil? (:attack/attacker attack))
+      (dissoc a :attack/attacker)
+      a)))
+
+(defn add-attacks-tx [attacks]
+  (mapv (comp add-tempid schema-attack->db-attack) attacks))
+
+(defn add-attacks* [conn attacks]
+  (d/transact conn (add-attacks-tx attacks)))
+
+(defn add-attacks [db attacks]
+  (add-attacks* (:conn db) attacks))
 
 
 (defn add-basic-info-tx [info]
   (let [parsed-info (s/conform :resp/basic-info info)]
     (if-not (= ::s/invalid parsed-info)
-      [(assoc parsed-info
-              :db/id (d/tempid :db.part/user))]
+      [(add-tempid parsed-info)]
       (throw (ex-info "Invalid basic info" (s/explain-data :resp/basic-info info))))))
 
 (defn add-basic-info* [conn info]

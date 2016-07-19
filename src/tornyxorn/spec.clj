@@ -1,17 +1,8 @@
 (ns tornyxorn.spec
   (:require [clojure.spec :as s]
-            [clojure.spec.gen :as gen]
             [clj-time.coerce :refer [from-date to-date]]))
 
 ;; Player attributes
-
-(def nonneg-int?
-  (s/with-gen
-    (s/conformer (fn [x] (if (and (integer? x) (>= x 0))
-                           x
-                           ::s/invalid))
-                 identity)
-    (fn [] (gen/such-that #(>= % 0) (s/gen integer?)))))
 
 (def date-spec
   (s/spec-impl '(fn [d] (cond (inst? d) d
@@ -20,6 +11,7 @@
                (fn [d] (cond (inst? d) d
                              (instance? org.joda.time.DateTime d) (to-date d)
                              :else ::s/invalid))
+               #(s/gen inst?)
                true
                (fn [d] (cond (instance? org.joda.time.DateTime d) d
                              (inst? d) (from-date d)
@@ -31,7 +23,7 @@
 (s/def :player/name string?)
 (s/def :player/signup date-spec)
 (s/def :player/last-action date-spec)
-(s/def :player/awards nonneg-int?)
+(s/def :player/awards nat-int?)
 (s/def :player/max-life pos-int?)
 
 (s/def :player/strength (s/and double? pos?))
@@ -43,23 +35,41 @@
 (s/def :player/speed-modifier double?)
 (s/def :player/defense-modifier double?)
 
-(s/def :player/logins nonneg-int?)
-(s/def :player/activity nonneg-int?)
-(s/def :player/attacks-lost nonneg-int?)
-(s/def :player/attacks-won nonneg-int?)
-(s/def :player/attacks-draw nonneg-int?)
-(s/def :player/highest-beaten nonneg-int?)
-(s/def :player/best-kill-streak nonneg-int?)
-(s/def :player/defends-lost nonneg-int?)
-(s/def :player/defends-won nonneg-int?)
-(s/def :player/defends-draw nonneg-int?)
-(s/def :player/xanax-taken nonneg-int?)
-(s/def :player/ecstasy-taken nonneg-int?)
-(s/def :player/times-traveled nonneg-int?)
-(s/def :player/networth nonneg-int?)
-(s/def :player/refills nonneg-int?)
-(s/def :player/stat-enhancers-used nonneg-int?)
-(s/def :player/medical-items-used nonneg-int?)
+(s/def :player/logins nat-int?)
+(s/def :player/activity nat-int?)
+(s/def :player/attacks-lost nat-int?)
+(s/def :player/attacks-won nat-int?)
+(s/def :player/attacks-draw nat-int?)
+(s/def :player/highest-beaten nat-int?)
+(s/def :player/best-kill-streak nat-int?)
+(s/def :player/defends-lost nat-int?)
+(s/def :player/defends-won nat-int?)
+(s/def :player/defends-draw nat-int?)
+(s/def :player/xanax-taken nat-int?)
+(s/def :player/ecstasy-taken nat-int?)
+(s/def :player/times-traveled nat-int?)
+(s/def :player/networth nat-int?)
+(s/def :player/refills nat-int?)
+(s/def :player/stat-enhancers-used nat-int?)
+(s/def :player/medical-items-used nat-int?)
+
+;; Attack attributes
+
+(def result-spec #{:attack.result/hospitalize :attack.result/stalemate
+                   :attack.result/leave :attack.result/mug :attack.result/lose
+                   :attack.result/run-away :attack.result/timeout})
+
+(s/def :attack/torn-id pos-int?)
+(s/def :attack/timestamp-started date-spec)
+(s/def :attack/timestamp-ended date-spec)
+(s/def :attack/attacker (s/nilable pos-int?))
+(s/def :attack/defender pos-int?)
+(s/def :attack/result result-spec)
+(s/def :attack/respect (s/double-in :infinite? false :NaN? false :min 0))
+
+(s/def :attack/attack
+  (s/keys :req [:attack/torn-id :attack/timestamp-started :attack/timestamp-ended
+                :attack/attacker :attack/defender :attack/result :attack/respect]))
 
 ;; Message types
 
@@ -108,3 +118,5 @@
   (s/keys :req [:player/strength :player/dexterity :player/speed :player/defense
                 :player/strength-modifier :player/dexterity-modifier
                 :player/speed-modifier :player/defense-modifier]))
+
+(s/def :resp/attacks (s/coll-of :attack/attack))

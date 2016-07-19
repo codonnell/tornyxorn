@@ -140,6 +140,13 @@
 
 (defrecord Request [endpoint id selections api-key])
 
+(defmethod create-reqs :msg/battle-stats
+  [{:keys [player/api-key :player/torn-id] :as update-req} api-key-seq]
+  [[(assoc update-req :msg/req
+           (map->Request
+            {:endpoint "user" :selections ["battlestats"] :api-key api-key :id torn-id}))]
+   api-key-seq])
+
 (defmethod create-reqs :msg/submit-api-key [update-req api-key-seq]
   [[(assoc update-req :msg/req
            (map->Request
@@ -159,6 +166,15 @@
                   (:msg/ids update-req)
                   api-key-seq)]
     [reqs (drop (count reqs) api-key-seq)]))
+
+(defmethod create-reqs :msg/faction-attacks
+  [{:keys [faction/torn-id player/api-key] :as update-req} api-key-seq]
+  [[(assoc update-req :msg/req
+           (map->Request {:endpoint "faction"
+                          :selections ["attacks"]
+                          :id torn-id
+                          :api-key api-key}))]
+   api-key-seq])
 
 (defn new-bucket []
   (let [c (chan (dropping-buffer 10))]
