@@ -1,0 +1,331 @@
+[
+ ;; player
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/torn-id
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/unique :db.unique/identity
+  :db/doc "A player's torn id"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/api-key
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's api key"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/battle-stats
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The sum of a player's battle stats"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/strength
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's strength"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/dexterity
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's dexterity"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/speed
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's speed"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/defense
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's defense"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/strength-modifier
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's strength modifier"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/dexterity-modifier
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's dexterity modifier"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/speed-modifier
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's speed modifier"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/defense-modifier
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's defense modifier"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/last-attack-update
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Timestamp for the most recent attack log update"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/last-battle-stats-update
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Timestamp for the most recent battle stats update"
+  :db.install/_attribute :db.part/db}
+
+ ;; profile
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/last-player-info-update
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Timestamp for the most recent player info update"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/name
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/unique :db.unique/identity
+  :db/doc "A player's name"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/signup
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The time a player signed up"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/last-action
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The time of a player's last action"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/level
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's level"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/awards
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The number of awards for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/max-life
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's maximum life"
+  :db.install/_attribute :db.part/db}
+
+ ;; personal stats
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/logins
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Number of logins for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/activity
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Amount of activity for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/attacks-lost
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Attacks lost for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/attacks-won
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Attacks won for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/attacks-draw
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Attack draws for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/highest-beaten
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Highest level beaten for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/best-kill-streak
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Best kill streak for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/defends-lost
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Defends lost for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/defends-won
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Defends won for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/defends-draw
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Defend draws for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/xanax-taken
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Xanax taken for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/ecstasy-taken
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Ecstasy taken for a player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/times-traveled
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "Number of times a player has traveled"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/networth
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "A player's networth"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/refills
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The number of refills a player has used"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/stat-enhancers-used
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The number of stat enhancers a player has used"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/medical-items-used
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The number of medical items a player has used"
+  :db.install/_attribute :db.part/db}
+
+
+ ;; attack
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :attack/torn-id
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/unique :db.unique/identity
+  :db/doc "The torn id for an attack"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :attack/attacker
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The attacking player for an attack"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :attack/defender
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The defending player for an attack"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :attack/result
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The result of an attack"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :attack/timestamp-started
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The start time of an attack"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :attack/timestamp-ended
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The end time of an attack"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :attack/respect
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The respect gain for an attack"
+  :db.install/_attribute :db.part/db}
+
+ ;; attack/result enum values
+ [:db/add #db/id[:db.part/user] :db/ident :attack.result/hospitalize]
+ [:db/add #db/id[:db.part/user] :db/ident :attack.result/mug]
+ [:db/add #db/id[:db.part/user] :db/ident :attack.result/leave]
+ [:db/add #db/id[:db.part/user] :db/ident :attack.result/lose]
+ [:db/add #db/id[:db.part/user] :db/ident :attack.result/stalemate]
+ [:db/add #db/id[:db.part/user] :db/ident :attack.result/run-away]
+ [:db/add #db/id[:db.part/user] :db/ident :attack.result/timeout]
+ ]
