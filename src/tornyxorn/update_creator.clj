@@ -2,6 +2,8 @@
   (:require [com.stuartsierra.component :as component]
             [immutant.web.async :as async]
             [cheshire.core :as json]
+            [clj-time.core :as t]
+            [clj-time.coerce :refer [from-date]]
             [tornyxorn.db :as db]
             [tornyxorn.torn-api :as api]
             [clojure.tools.logging :as log]
@@ -23,23 +25,22 @@
   (db/add-api-key db api-key)
   [msg])
 
-(defn keep-or-identity [f coll]
-  "Returns two vectors, the first containing (f item) for all items where (f
-  item) is truthy. The second contains the items for which (f item) is not
-  truthy."
-  (reduce (fn [[coll1 coll2] x]
-            (if-let [y (f x)]
-              [(conj coll1 y) coll2]
-              [coll1 (conj coll2 x)]))
-          [[] []] coll))
+(defn up-to-date-info? [db torn-id]
+  (and (db/has-player-info? db torn-id)
+       (let [update-time (from-date (:player/last-player-info-update (db/player-by-id db torn-id)))]
+         (t/after? update-time (t/ago (t/months 1))))))
 
 (defmethod create-update :msg/players
   [db _ {:keys [msg/ids] :as msg}]
-  (let [groups (group-by #(db/has-player-info? db %) ids)]
+  (let [groups (group-by #(up-to-date-info? db %) ids)]
     [(-> msg
          (assoc :msg/type :msg/known-players, :msg/players (mapv #(db/player-by-id db %) (groups true)))
          (dissoc :msg/ids))
      (assoc msg :msg/type :msg/unknown-players, :msg/ids (groups false))]))
+
+(defmethod create-update :msg/player-attacks
+  [_ _ msg]
+  [msg])
 
 (defmethod create-update :default
   [_ _ {:keys [msg/ws] :as msg}]
@@ -51,14 +52,17 @@
 
 (def update-dest
   {:msg/known-players :update-handler
+   :msg/player-attacks :torn-api
    :msg/battle-stats :torn-api
    :msg/unknown-players :torn-api
    :msg/submit-api-key :torn-api})
 
-(defn faction-attack-msg [faction-id api-key]
-  {:msg/type :msg/faction-attacks
-   :player/api-key api-key
-   :faction/torn-id faction-id})
+(def faction-attack-msg
+  (memoize
+   (fn [faction-id api-key]
+     {:msg/type :msg/faction-attacks
+      :player/api-key api-key
+      :faction/torn-id faction-id})))
 
 (defn continuously-update-faction-attacks [db api-chan token-buckets faction-id api-key finish-chan]
   (db/add-api-key db api-key)

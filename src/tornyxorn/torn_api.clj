@@ -167,13 +167,24 @@
                   api-key-seq)]
     [reqs (drop (count reqs) api-key-seq)]))
 
+(defmethod create-reqs :msg/player-attacks
+  [{:keys [player/torn-id player/api-key] :as update-req} api-key-seq]
+  [[(assoc update-req
+           :msg/req (map->Request {:endpoint "user"
+                                   :selections ["attacks"]
+                                   :id torn-id
+                                   :api-key api-key})
+           :msg/type :msg/attacks)]
+   api-key-seq])
+
 (defmethod create-reqs :msg/faction-attacks
   [{:keys [faction/torn-id player/api-key] :as update-req} api-key-seq]
-  [[(assoc update-req :msg/req
-           (map->Request {:endpoint "faction"
-                          :selections ["attacks"]
-                          :id torn-id
-                          :api-key api-key}))]
+  [[(assoc update-req
+           :msg/req (map->Request {:endpoint "faction"
+                                   :selections ["attacks"]
+                                   :id torn-id
+                                   :api-key api-key})
+           :msg/type :msg/attacks)]
    api-key-seq])
 
 (defn new-bucket []

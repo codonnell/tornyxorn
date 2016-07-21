@@ -1,6 +1,7 @@
 (ns tornyxorn.db
   (:require [datomic.api :as d]
             [clojure.spec :as s]
+            [clojure.set :as set]
             [clj-time.core :as t]
             [clj-time.coerce :refer [to-date from-date]]
             [com.stuartsierra.component :as component]))
@@ -20,6 +21,17 @@
 
 (defn new-datomic-db [uri]
   (map->Datomic {:uri uri}))
+
+
+
+
+;; Database functions.
+;;
+;; Functions with a * suffix take a database value or connection as an argument.
+;; Functions without the * suffix take a database component (a la Stuart Sierra)
+;; as an argument.
+
+
 
 
 (defn add-tempid [data]
@@ -126,6 +138,28 @@
   (add-attacks* (:conn db) attacks))
 
 
+(defn new-attacks* [db attacks]
+  (let [new-ids (mapv :attack/torn-id attacks)
+        curr-ids (d/q '[:find [?id ...]
+                        :in $ [?id ...]
+                        :where [_ :attack/torn-id ?id]]
+                      db new-ids)]
+    (set/difference (set new-ids) (set curr-ids))))
+
+(defn new-attacks [db attacks]
+  (new-attacks* (-> db :conn d/db) attacks))
+
+
+(defn has-api-key?* [db torn-id]
+  (d/q '[:find ?id .
+         :in $ ?id
+         :where [?p :player/torn-id ?id] [?p :player/api-key]]
+       db torn-id))
+
+(defn has-api-key? [db torn-id]
+  (has-api-key?* (-> db :conn d/db) torn-id))
+
+
 (defn add-basic-info-tx [info]
   (let [parsed-info (s/conform :resp/basic-info info)]
     (if-not (= ::s/invalid parsed-info)
@@ -138,6 +172,14 @@
 (defn add-basic-info [db info]
   (add-basic-info* (:conn db) info))
 
+
+(defn get-api-key* [db torn-id]
+  (d/q '[:find ?k .
+         :in $ ?id
+         :where [?p :player/torn-id ?id] [?p :player/api-key ?k]]))
+
+(defn get-api-key [db torn-id]
+  (get-api-key* (-> db :conn d/db) torn-id))
 
 (defn add-api-key-tx [api-key]
   [{:db/id (d/tempid :db.part/user)
@@ -156,3 +198,60 @@
 
 (defn remove-api-key [db api-key]
   (remove-api-key* (:conn db) api-key))
+
+;; Difficulty computation functions
+
+(defn total-stats [p]
+  (+ (* (:player/strength p) (:player/strength-modifier p))
+     (* (:player/dexterity p) (:player/dexterity-modifier p))
+     (* (:player/speed p) (:player/speed-modifier p))
+     (* (:player/defense p) (:player/defense-modifier p))))
+
+(defn attack-success? [attack]
+  (contains? #{:attack.result/hospitalize :attack.result/mug :attack.result/leave}
+             (:attack/result attack)))
+
+(defn attack-fail? [attack]
+  (not (attack-success? attack)))
+
+(defn easy-attack? [attacker attack]
+  (and (attack-success? attack)
+       (<= (total-stats (:attack/attacker attack))
+           (total-stats attacker))))
+
+(defn hard-attack? [attacker attack]
+  (and (attack-fail? attack)
+       (>= (total-stats (:attack/attacker attack))
+           (total-stats attacker))))
+
+(defn difficulty* [db a-id d-id]
+  "Returns :easy if someone with fewer total stats than a-id beat d-id, :hard if
+  someone with more total stats than a-id lost to d-id, :medium of both of these
+  are true, and :unknown if neither are true."
+  (let [attacker (player-by-id* db a-id)
+        attacks-on-d (map (fn [[a tx]] (d/entity (d/as-of db tx) a))
+                          (d/q '[:find ?a ?tx1
+                                 :in $ ?id
+                                 :where
+                                 [?a :attack/defender ?d ?tx1]
+                                 [?d :player/torn-id ?id]
+                                 [?a :attack/attacker ?ap]
+                                 [?ap :player/strength _ ?tx2]
+                                 [(< ?tx2 ?tx1)]]
+                               db d-id))
+        easy-attacks (filter (partial easy-attack? attacker) attacks-on-d)
+        hard-attacks (filter (partial hard-attack? attacker) attacks-on-d)]
+    (cond
+      (and (empty? easy-attacks) (empty? hard-attacks)) :unknown
+      (empty? hard-attacks) :easy
+      (empty? easy-attacks) :hard
+      :else :medium)))
+
+(defn difficulty [db a-id d-id]
+  (difficulty* (-> db :conn d/db) a-id d-id))
+
+(defn difficulties* [db a-id d-ids]
+  (mapv (partial difficulty* db a-id) d-ids))
+
+(defn difficulties [db a-id d-ids]
+  (difficulties* (-> db :conn d/db) a-id d-ids))
