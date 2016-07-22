@@ -6,7 +6,7 @@
             [tornyxorn.db :as db]
             [tornyxorn.response-types :as rt]
             [tornyxorn.torn-api :as api]
-            [clojure.tools.logging :as log]
+            [tornyxorn.log :as log]
             [datomic.api :as d]))
 
 (defmulti store-update
@@ -77,19 +77,25 @@
 
 (defmethod handle-update :msg/known-players
   [_ _ notify-chan _ msg]
+  (log/debug "Handling known players:" msg)
   (>!! notify-chan msg))
 
 (defmethod handle-update :msg/submit-api-key
-  [db req-chan notify-chan token-buckets {:keys [player/api-key player/resp] :as msg}]
+  [db req-chan notify-chan token-buckets {:keys [player/api-key msg/resp] :as msg}]
   (log/debug "Handling" msg)
   (let [player (assoc (:msg/resp msg) :player/api-key api-key)]
     (log/info "Adding player" player)
     (db/add-player db player))
   (api/add-bucket! token-buckets api-key)
   ;; TODO: Pass battle-stats (and attacks?) update to req-chan
-  ;; (>!! req-chan {:msg/type :msg/battle-stats
-  ;;                :player/torn-id (-> msg :msg/resp :player/torn-id)
-  ;;                :player/api-key api-key})
+  (let [{:keys [player/torn-id]} resp]
+    (>!! req-chan {:msg/type :msg/player-attacks
+                   :player/torn-id torn-id
+                   :player/api-key api-key})
+    (>!! req-chan {:msg/type :msg/players
+                   :msg/ids [torn-id]
+                   :player/api-key api-key
+                   :msg/ws (:msg/ws msg)}))
   (>!! notify-chan msg))
 
 

@@ -6,7 +6,7 @@
             [clj-time.coerce :refer [from-date]]
             [tornyxorn.db :as db]
             [tornyxorn.torn-api :as api]
-            [clojure.tools.logging :as log]
+            [tornyxorn.log :as log]
             [clojure.core.async :refer [go-loop <! >! close! alts! timeout chan]]))
 
 (defmulti create-update
@@ -34,7 +34,8 @@
   [db _ {:keys [msg/ids] :as msg}]
   (let [groups (group-by #(up-to-date-info? db %) ids)]
     [(-> msg
-         (assoc :msg/type :msg/known-players, :msg/players (mapv #(db/player-by-id db %) (groups true)))
+         (assoc :msg/type :msg/known-players, :msg/players (mapv #(into {} (db/player-by-id db %))
+                                                                 (groups true)))
          (dissoc :msg/ids))
      (assoc msg :msg/type :msg/unknown-players, :msg/ids (groups false))]))
 
@@ -75,12 +76,26 @@
         (>! api-chan (faction-attack-msg faction-id api-key))
         (recur)))))
 
-(defrecord UpdateCreator [db req-chan api-chan update-chan faction-id api-key finish-chan]
+(defn continuously-update-players [db api-chan finish-chan]
+  "Updates the stalest player info every 30 seconds, one player per api key in
+  the system."
+  (go-loop []
+    (let [[_ c] (alts! [(timeout 30000) finish-chan])]
+      (when (not= c finish-chan)
+        (let [ps (db/stale-players db (count (db/api-keys db)))]
+          (>! api-chan {:msg/type :msg/unknown-players
+                        :msg/ids (map :player/torn-id ps)})
+          (recur))))))
+
+(defrecord UpdateCreator [db req-chan api-chan update-chan faction-id api-key
+                          finish-faction finish-players]
   component/Lifecycle
   (start [component]
-    (let [finish-chan (chan)
+    (let [finish-faction (chan)
+          finish-players (chan)
           token-buckets (-> component :torn-api :token-buckets)]
-      (continuously-update-faction-attacks db api-chan token-buckets faction-id api-key finish-chan)
+      (continuously-update-faction-attacks db api-chan token-buckets faction-id api-key finish-faction)
+      (continuously-update-players db api-chan finish-players)
       (go-loop [msg (<! req-chan)]
         (log/debug "Websocket message:" msg)
         ;; Updates requiring info from the torn api are sent there and updates
@@ -91,10 +106,11 @@
             :torn-api (>! api-chan msg)))
         (when-let [msg (<! req-chan)]
           (recur msg)))
-      (assoc component :finish-chan finish-chan)))
+      (assoc component :finish-faction finish-faction :finish-players finish-players)))
   (stop [component]
     (close! req-chan)
-    (close! finish-chan)
+    (close! finish-faction)
+    (close! finish-players)
     component))
 
 (defn new-update-creator [config]

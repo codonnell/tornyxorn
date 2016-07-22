@@ -12,7 +12,7 @@
   :db/ident :player/api-key
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one
-  :db/index true
+  :db/unique :db.unique/identity
   :db/doc "A player's api key"
   :db.install/_attribute :db.part/db}
  {:db/id #db/id[:db.part/db]

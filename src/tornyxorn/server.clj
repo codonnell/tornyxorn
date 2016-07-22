@@ -1,7 +1,7 @@
 (ns tornyxorn.server
   (:require [com.stuartsierra.component :as component]
             [immutant.web :refer [run stop]]
-            [clojure.tools.logging :as log]))
+            [tornyxorn.log :as log]))
 
 (defrecord WebServer [port server handler]
   component/Lifecycle

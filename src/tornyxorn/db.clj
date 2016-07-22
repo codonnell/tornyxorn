@@ -69,6 +69,32 @@
   (api-keys* (-> db :conn d/db)))
 
 
+(defn stale-players* [db n]
+  "Returns a sequence of (up to) n players with the oldest player info that is
+  at least a month old."
+  (let [ps (->> (d/q '[:find [?p ...]
+                       :where [?p :player/torn-id]
+                       (not [?p :player/last-player-info-update])]
+                     db)
+                (take n)
+                (map (partial d/entity db)))]
+    (let [k (count ps)]
+      (if (= n k)
+        ps
+        (->> (d/q '[:find [?p ...]
+                    :where [?p :player/last-player-info-update]]
+                  db)
+             (map (partial d/entity db))
+             (sort-by :player/last-player-info-update)
+             (take (- n k))
+             (take-while #(t/before? (from-date (:player/last-player-info-update %))
+                                     (t/ago (t/months 1))))
+             (concat ps))))))
+
+(defn stale-players [db n]
+  (stale-players* (-> db :conn d/db) n))
+
+
 (defn add-player-tx [player]
   [(add-tempid player)])
 
@@ -224,12 +250,11 @@
        (>= (total-stats (:attack/attacker attack))
            (total-stats attacker))))
 
-(defn difficulty* [db a-id d-id]
-  "Returns :easy if someone with fewer total stats than a-id beat d-id, :hard if
-  someone with more total stats than a-id lost to d-id, :medium of both of these
-  are true, and :unknown if neither are true."
-  (let [attacker (player-by-id* db a-id)
-        attacks-on-d (map (fn [[a tx]] (d/entity (d/as-of db tx) a))
+(defn difficulty* [db attacker defender-id]
+  "Returns :easy if someone with fewer total stats than attacker beat defender,
+  :hard if someone with more total stats than attacker lost to defender, :medium
+  of both of these are true, and :unknown if neither are true."
+  (let [attacks-on-d (map (fn [[a tx]] (d/entity (d/as-of db tx) a))
                           (d/q '[:find ?a ?tx1
                                  :in $ ?id
                                  :where
@@ -238,7 +263,7 @@
                                  [?a :attack/attacker ?ap]
                                  [?ap :player/strength _ ?tx2]
                                  [(< ?tx2 ?tx1)]]
-                               db d-id))
+                               db defender-id))
         easy-attacks (filter (partial easy-attack? attacker) attacks-on-d)
         hard-attacks (filter (partial hard-attack? attacker) attacks-on-d)]
     (cond
@@ -247,11 +272,11 @@
       (empty? easy-attacks) :hard
       :else :medium)))
 
-(defn difficulty [db a-id d-id]
-  (difficulty* (-> db :conn d/db) a-id d-id))
+(defn difficulty [db attacker d-id]
+  (difficulty* (-> db :conn d/db) attacker d-id))
 
-(defn difficulties* [db a-id d-ids]
-  (mapv (partial difficulty* db a-id) d-ids))
+(defn difficulties* [db attacker d-ids]
+  (mapv (partial difficulty* db attacker) d-ids))
 
-(defn difficulties [db a-id d-ids]
-  (difficulties* (-> db :conn d/db) a-id d-ids))
+(defn difficulties [db attacker d-ids]
+  (difficulties* (-> db :conn d/db) attacker d-ids))

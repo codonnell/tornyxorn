@@ -8,7 +8,7 @@
             [tornyxorn.db :as db]
             [tornyxorn.response-types :as rt]
             [com.stuartsierra.component :as component]
-            [clojure.tools.logging :as log]
+            [tornyxorn.log :as log]
             [clojure.set :as set]))
 
 (defn wrap-errors [handler]
@@ -156,7 +156,6 @@
 (defmethod create-reqs :msg/unknown-players [update-req api-key-seq]
   (let [reqs (map (fn [id api-key]
                     {:msg/type :msg/unknown-player
-                     :msg/ws (:msg/ws update-req)
                      :player/torn-id id
                      :msg/req (map->Request
                                {:endpoint "user"

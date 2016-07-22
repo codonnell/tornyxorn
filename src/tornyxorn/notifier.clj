@@ -5,18 +5,19 @@
             [immutant.web.async :as async]
             [cheshire.core :as json]
             [com.stuartsierra.component :as component]
-            [clojure.tools.logging :as log]))
+            [tornyxorn.log :as log]
+            [tornyxorn.db :as db]))
 
 (defmulti notify
   "Notifies the appropriate users via their websocket connection, given a message."
-  (fn [_ {:keys [msg/type]}] type))
+  (fn [_ _ {:keys [msg/type]}] type))
 
-(defmethod notify :msg/submit-api-key [_ {:keys [msg/ws player/api-key]}]
+(defmethod notify :msg/submit-api-key [_ _ {:keys [msg/ws player/api-key]}]
   (async/send! ws (json/encode {:type "submit-api-key"
                                 :result "success"
                                 :api-key api-key})))
 
-(defmethod notify :msg/error [ws-map {:keys [msg/ws error/error] :as msg}]
+(defmethod notify :msg/error [_ ws-map {:keys [msg/ws error/error] :as msg}]
   (if (= :error/invalid-api-key (:error/type error))
     (let [invalid-conns (filter (fn [[_ m]] (= (:api-key m) (:player/api-key error))) @ws-map)]
       (doseq [[ws _] invalid-conns]
@@ -26,39 +27,52 @@
     (log/error "Unhandled error:" msg)))
 
 (def player-keys [:player/torn-id :player/xanax-taken :player/stat-enhancers-used
-                  :player/refills :player/name :player/level])
+                  :player/refills :player/name :player/level :difficulty])
 
 (defn select-player-ws-props [player]
   (transform [sp/ALL sp/FIRST] name (select-keys player player-keys)) )
 
-(defmethod notify :msg/unknown-player [ws-map {:keys [msg/resp] :as msg}]
+(defn add-difficulty [db attacker-key {:keys [player/torn-id] :as player}]
+  (log/debug (type player))
+  (assoc player :difficulty (db/difficulty db (db/player-by-api-key db attacker-key) torn-id)))
+
+(defmethod notify :msg/unknown-player [db ws-map {:keys [msg/resp] :as msg}]
   (log/debug "msg:" msg)
   (log/debug "ws-map:" @ws-map)
-  (doseq [[ws _] (filter (fn [[_ {:keys [players]}]]
-                           (contains? players (:player/torn-id resp)))
-                         @ws-map)]
+  (doseq [[ws {:keys [player/api-key]}] (filter (fn [[_ {:keys [players]}]]
+                                                  (contains? players (:player/torn-id resp)))
+                                                @ws-map)]
     (log/debug "Sending" resp)
     (async/send!
      ws
      (json/encode
       {:type "player"
-       :player (select-player-ws-props resp)}))))
+       :player (->> resp
+                    (add-difficulty db api-key)
+                    (select-player-ws-props))}))))
 
-(defmethod notify :msg/known-players [_ {:keys [msg/players msg/ws]}]
-  (async/send! ws (json/encode {:type "players" :players (mapv select-player-ws-props players)})))
+(defmethod notify :msg/known-players [db _ {:keys [msg/players msg/ws player/api-key]}]
+  (log/debug "Players:" players)
+  (async/send!
+   ws
+   (json/encode {:type "players"
+                 :players (mapv (comp select-player-ws-props
+                                      (partial add-difficulty db api-key))
+                                players)})))
 
-(defrecord Notifier [notify-chan ws-map]
+(defrecord Notifier [db notify-chan ws-map]
   component/Lifecycle
   (start [component]
     (go-loop [msg (<! notify-chan)]
       (when msg
         (log/debug "Notifier recieved:" msg)
-        (notify ws-map msg)
+        (notify db ws-map msg)
         (recur (<! notify-chan))))
     component)
   (stop [component]
     (close! notify-chan)
     component))
 
-(defn new-notifier [{:keys [notify-chan ws-map] :as config}]
+(defn new-notifier [{:keys [db notify-chan ws-map] :as config}]
   (map->Notifier config))
+

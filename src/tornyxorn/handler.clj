@@ -2,7 +2,7 @@
   (:require [immutant.web :as web]
             [immutant.web.async :as async]
             [cheshire.core :as json]
-            [clojure.tools.logging :as log]
+            [tornyxorn.log :as log]
             [clojure.core.async :refer [>!!]]
             [clojure.set :refer [rename-keys]]
             [clojure.spec :as s]
@@ -64,7 +64,7 @@
                                                                           :data (ex-data e)}))
                                             nil))]
                       (when parsed-msg
-                        (swap! ws-map update ch #(assoc % :api-key (:player/api-key parsed-msg)))
+                        (swap! ws-map update ch #(assoc % :player/api-key (:player/api-key parsed-msg)))
                         (when (= :msg/players (:msg/type parsed-msg))
                           (swap! ws-map update ch #(assoc % :players (set (:msg/ids parsed-msg)))))
                         (>!! req-chan parsed-msg))))

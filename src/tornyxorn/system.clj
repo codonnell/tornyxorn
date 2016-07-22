@@ -42,8 +42,10 @@
                                            :update-chan update-chan
                                            :notify-chan notify-chan})
                       [:db :torn-api])
-     :notifier (new-notifier {:notify-chan notify-chan
-                              :ws-map ws-map})
+     :notifier (component/using
+                (new-notifier {:notify-chan notify-chan
+                               :ws-map ws-map})
+                [:db])
      :http (component/using
             (new-web-server {:port (Integer. (env :http-port))})
             [:handler]))))

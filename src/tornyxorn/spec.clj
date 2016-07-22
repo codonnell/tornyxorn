@@ -48,7 +48,7 @@
 (s/def :player/xanax-taken nat-int?)
 (s/def :player/ecstasy-taken nat-int?)
 (s/def :player/times-traveled nat-int?)
-(s/def :player/networth nat-int?)
+(s/def :player/networth int?)
 (s/def :player/refills nat-int?)
 (s/def :player/stat-enhancers-used nat-int?)
 (s/def :player/medical-items-used nat-int?)
