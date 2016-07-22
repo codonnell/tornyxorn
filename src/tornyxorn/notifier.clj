@@ -56,8 +56,11 @@
   (async/send!
    ws
    (json/encode {:type "players"
-                 :players (mapv (comp select-player-ws-props
-                                      (partial add-difficulty db api-key))
+                 :players (mapv #(->> %
+                                      ;; convert datomic.query.EntityMap to PersistentHashMap
+                                      (into {})
+                                      (add-difficulty db api-key)
+                                      select-player-ws-props)
                                 players)})))
 
 (defrecord Notifier [db notify-chan ws-map]

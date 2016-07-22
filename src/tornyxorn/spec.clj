@@ -19,7 +19,7 @@
 
 (s/def :player/torn-id pos-int?)
 (s/def :player/api-key string?)
-(s/def :player/level pos-int?)
+(s/def :player/level nat-int?)
 (s/def :player/name string?)
 (s/def :player/signup date-spec)
 (s/def :player/last-action date-spec)

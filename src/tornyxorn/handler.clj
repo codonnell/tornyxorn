@@ -7,14 +7,8 @@
             [clojure.set :refer [rename-keys]]
             [clojure.spec :as s]
             [tornyxorn.spec :as spec]
-            [com.stuartsierra.component :as component]))
-
-(defrecord Handler [handler]
-  component/Lifecycle
-  (start [component]
-    (assoc component :handler handler))
-  (stop [component]
-    (assoc component :handler nil)))
+            [com.stuartsierra.component :as component]
+            [tornyxorn.db :as db]))
 
 (def conns (atom #{}))
 
@@ -54,24 +48,42 @@
                  (swap! ws-map assoc ch {})
                  (swap! conns conj ch))
       :on-error (fn [ch e]
-                  (log/error "Websocket error!"))
+                  (log/error "Websocket error:" e))
       :on-message (fn [ch msg]
                     (log/info "Received message:" msg)
+                    ;; Parse message
                     (let [parsed-msg (try (parse-msg (assoc (json/decode msg true) :ws ch))
                                           (catch clojure.lang.ExceptionInfo e
                                             (log/error "Error parsing websocket message:" (str (ex-data e)))
                                             (async/send! ch (json/encode {:error "Invalid message format"
-                                                                          :data (ex-data e)}))
+                                                                          :data (str (ex-data e))}))
                                             nil))]
-                      (when parsed-msg
-                        (swap! ws-map update ch #(assoc % :player/api-key (:player/api-key parsed-msg)))
-                        (when (= :msg/players (:msg/type parsed-msg))
-                          (swap! ws-map update ch #(assoc % :players (set (:msg/ids parsed-msg)))))
-                        (>!! req-chan parsed-msg))))
+                      (when-let [{:keys [player/api-key msg/type msg/ids] :as parsed-msg} parsed-msg]
+                        ;; Do not pass along submit-api-key message when api key
+                        ;; already exists. Immediately send response.
+                        (if (and (= :msg/submit-api-key type)
+                                 (:player/strength (db/player-by-api-key db api-key)))
+                          (async/send! ch
+                                       (json/encode {:type "submit-api-key"
+                                                     :result "success"
+                                                     :api-key api-key}))
+                          ;; Pass along all other messages.
+                          (do
+                            (swap! ws-map update ch #(assoc % :player/api-key (:player/api-key parsed-msg)))
+                            (when (= :msg/players (:msg/type parsed-msg))
+                              (swap! ws-map update ch #(assoc % :players (set (:msg/ids parsed-msg)))))
+                            (>!! req-chan parsed-msg))))))
       :on-close (fn [ch {:keys [code reason]}]
                   (log/info "Client disconnected." ch)
                   (swap! conns disj ch))
       })))
 
-(defn new-handler [{:keys [db req-chan ws-map]}]
-  (->Handler (app db req-chan ws-map)))
+(defrecord Handler [handler db req-chan ws-map]
+  component/Lifecycle
+  (start [component]
+    (assoc component :handler (app db req-chan ws-map)))
+  (stop [component]
+    (assoc component :handler nil)))
+
+(defn new-handler [{:keys [db req-chan ws-map] :as config}]
+  (map->Handler config))

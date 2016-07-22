@@ -34,7 +34,7 @@
   [db _ {:keys [msg/ids] :as msg}]
   (let [groups (group-by #(up-to-date-info? db %) ids)]
     [(-> msg
-         (assoc :msg/type :msg/known-players, :msg/players (mapv #(into {} (db/player-by-id db %))
+         (assoc :msg/type :msg/known-players, :msg/players (mapv #(db/player-by-id db %)
                                                                  (groups true)))
          (dissoc :msg/ids))
      (assoc msg :msg/type :msg/unknown-players, :msg/ids (groups false))]))
@@ -81,10 +81,11 @@
   the system."
   (go-loop []
     (let [[_ c] (alts! [(timeout 30000) finish-chan])]
-      (when (not= c finish-chan)
+      (when-not (= c finish-chan)
         (let [ps (db/stale-players db (count (db/api-keys db)))]
-          (>! api-chan {:msg/type :msg/unknown-players
-                        :msg/ids (map :player/torn-id ps)})
+          (when-not (empty? ps)
+            (>! api-chan {:msg/type :msg/unknown-players
+                          :msg/ids (map :player/torn-id ps)}))
           (recur))))))
 
 (defrecord UpdateCreator [db req-chan api-chan update-chan faction-id api-key
