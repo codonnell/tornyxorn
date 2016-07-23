@@ -5,6 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0-alpha10"]
                  [clj-time "0.12.0"]
+                 [org.clojure/tools.nrepl "0.2.11"]
                  [com.rpl/specter "0.12.0-SNAPSHOT"]
                  [org.clojure/core.async "0.2.385"]
                  [org.immutant/web "2.1.5"]
@@ -17,7 +18,7 @@
                  [cheshire "5.5.0"]
                  [com.stuartsierra/component "0.3.1"]
                  [environ "1.0.3"]
-                 [org.postgresql/postgresql "9.3-1102-jdbc41"]
+                 [com.amazonaws/aws-java-sdk-dynamodb "1.11.20"]
                  [org.clojure/tools.logging "0.3.1"]]
   :repositories {"my.datomic.com" {:url "https://my.datomic.com/repo"
                                    :username [:gpg :env/datomic_username]
