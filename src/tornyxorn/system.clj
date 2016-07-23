@@ -14,7 +14,7 @@
 
 
 (defn dev-system []
-  (immutant.util/set-log-level! :DEBUG)
+  ;; (immutant.util/set-log-level! :INFO)
   (let [req-chan (chan (Integer. (env :chan-size)))
         api-chan (chan (Integer. (env :chan-size)))
         update-chan (chan (Integer. (env :chan-size)))

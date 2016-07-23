@@ -6,8 +6,18 @@
             [clj-time.coerce :refer [from-date]]
             [tornyxorn.db :as db]
             [tornyxorn.torn-api :as api]
-            [tornyxorn.log :as log]
+            [clojure.tools.logging :as log]
+            [clojure.string :as string]
             [clojure.core.async :refer [go-loop <! >! close! alts! timeout chan]]))
+
+(defn log-string [msg]
+  (str "Updating "
+       (case (:msg/type msg)
+         :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
+         :msg/submit-api-key (str "api key " (:player/api-key msg))
+         :msg/players (str "players " (string/join ", " (:msg/ids msg)))
+         :msg/player-attacks (str "attacks for " (:player/torn-id msg))
+         (str "unexpected message: " msg))))
 
 (defmulti create-update
   "Processes an update request message and returns a vector of updates and
@@ -37,7 +47,7 @@
          (assoc :msg/type :msg/known-players, :msg/players (mapv #(db/player-by-id db %)
                                                                  (groups true)))
          (dissoc :msg/ids))
-     (assoc msg :msg/type :msg/unknown-players, :msg/ids (groups false))]))
+     (assoc msg :msg/type :msg/unknown-players, :msg/ids (into [] (groups false)))]))
 
 (defmethod create-update :msg/player-attacks
   [_ _ msg]
@@ -98,6 +108,7 @@
       (continuously-update-faction-attacks db api-chan token-buckets faction-id api-key finish-faction)
       (continuously-update-players db api-chan finish-players)
       (go-loop [msg (<! req-chan)]
+        (log/info (log-string msg))
         (log/debug "Websocket message:" msg)
         ;; Updates requiring info from the torn api are sent there and updates
         ;; with all necessary info are sent to the update handler

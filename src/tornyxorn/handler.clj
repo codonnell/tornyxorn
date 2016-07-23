@@ -2,7 +2,7 @@
   (:require [immutant.web :as web]
             [immutant.web.async :as async]
             [cheshire.core :as json]
-            [tornyxorn.log :as log]
+            [clojure.tools.logging :as log]
             [clojure.core.async :refer [>!!]]
             [clojure.set :refer [rename-keys]]
             [clojure.spec :as s]

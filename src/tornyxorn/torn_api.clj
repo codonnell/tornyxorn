@@ -8,8 +8,18 @@
             [tornyxorn.db :as db]
             [tornyxorn.response-types :as rt]
             [com.stuartsierra.component :as component]
-            [tornyxorn.log :as log]
+            [clojure.tools.logging :as log]
             [clojure.set :as set]))
+
+(defn log-string [msg]
+  (str "Requesting "
+       (case (:msg/type msg)
+         :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
+         :msg/faction-attacks (str "attacks for faction " (:faction/torn-id msg))
+         :msg/player-attacks (str "attacks for player " (:player/torn-id msg))
+         :msg/submit-api-key (str "api key confirmation for " (:player/api-key msg))
+         :msg/unknown-players (str "player info for " (string/join ", " (:msg/ids msg)))
+         (str "unhandled msg type: " (:msg/type msg)))))
 
 (defn wrap-errors [handler]
   (fn [{:keys [msg/req msg/resp] :as msg}]
@@ -228,6 +238,7 @@
       (continuously-fill-buckets db token-buckets finish-chan)
       (go-loop [api-key-seq (very-lazy-apply-concat (repeatedly #(db/api-keys db)))
                 update-req (<! api-chan)]
+        (log/info (log-string update-req))
         (log/debug "Update request:" update-req)
         (when update-req
           (let [[reqs tail-seq] (create-reqs update-req api-key-seq)]

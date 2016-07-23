@@ -6,8 +6,21 @@
             [tornyxorn.db :as db]
             [tornyxorn.response-types :as rt]
             [tornyxorn.torn-api :as api]
-            [tornyxorn.log :as log]
-            [datomic.api :as d]))
+            [clojure.tools.logging :as log]
+            [datomic.api :as d]
+            [clojure.string :as string]))
+
+(defn log-string [msg]
+  (str "Handling "
+       (case (:msg/type msg)
+         :msg/error "error"
+         :msg/attacks "attacks"
+         :msg/battle-stats (str "for " (:player/torn-id msg))
+         :msg/known-players (str "known players " (string/join ", " (map :player/torn-id (:msg/player msg))))
+         :msg/unknown-player (str "unknown player " (-> msg :msg/resp :player/torn-id))
+         :msg/submit-api-key (str "submitted API key: " (:player/api-key msg))
+         (str "unknown message type: " (:msg/type msg))
+         )))
 
 (defmulti store-update
   "Stores an update from the API to the database."
@@ -89,6 +102,9 @@
   (api/add-bucket! token-buckets api-key)
   ;; TODO: Pass battle-stats (and attacks?) update to req-chan
   (let [{:keys [player/torn-id]} resp]
+    (>!! req-chan {:msg/type :msg/battle-stats
+                   :player/torn-id torn-id
+                   :player/api-key api-key})
     (>!! req-chan {:msg/type :msg/player-attacks
                    :player/torn-id torn-id
                    :player/api-key api-key})
@@ -103,6 +119,7 @@
   component/Lifecycle
   (start [component]
     (go-loop [msg (<! update-chan)]
+      (log/info (log-string msg))
       (log/debug "Handler received:" msg)
       (when msg
         (handle-update db req-chan notify-chan (-> component :torn-api :token-buckets) msg)

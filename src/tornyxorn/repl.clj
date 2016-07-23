@@ -1,7 +1,7 @@
 (ns tornyxorn.repl
   (:require [clojure.tools.nrepl.server :refer [start-server stop-server]]
             [com.stuartsierra.component :as component]
-            [tornyxorn.log :as log]))
+            [clojure.tools.logging :as log]))
 
 
 (defrecord Repl [port server]

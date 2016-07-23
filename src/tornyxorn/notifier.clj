@@ -5,8 +5,19 @@
             [immutant.web.async :as async]
             [cheshire.core :as json]
             [com.stuartsierra.component :as component]
-            [tornyxorn.log :as log]
-            [tornyxorn.db :as db]))
+            [clojure.tools.logging :as log]
+            [tornyxorn.db :as db]
+            [clojure.string :as string]))
+
+(defn log-string [msg]
+  (str "Notifying of "
+       (case (:msg/type msg)
+         :msg/submit-api-key (str "adding API key " (:player/api-key msg))
+         :msg/error (str "invalid API key: " (-> msg :error/error :player/api-key))
+         :msg/unknown-player (str "new player info for " (-> msg :msg/resp :player/torn-id))
+         :msg/known-players (str "known player info for "
+                                 (string/join ", " (map :player/torn-id (:msg/players msg))))
+         (str "unknown msg type: " (:msg/type msg)))))
 
 (defmulti notify
   "Notifies the appropriate users via their websocket connection, given a message."

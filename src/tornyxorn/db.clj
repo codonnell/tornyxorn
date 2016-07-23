@@ -105,13 +105,24 @@
   (add-player* (:conn db) player))
 
 
-(defn add-player-info-tx [info]
+(defn remove-nils [m]
+  (into {} (filter (fn [[k v]] (not (nil? v)))) m))
+
+(defn schema-player-info->db-player-info [{:keys [player/faction] :as info}]
   (let [parsed-info (s/conform :resp/player-info info)]
     (if-not (= ::s/invalid parsed-info)
-      [(assoc parsed-info
-              :player/last-player-info-update (to-date (t/now))
-              :db/id (d/tempid :db.part/user))]
+      (as-> parsed-info info
+        (remove-nils info)
+        (update info :player/role (fn [role] [:db/ident role]))
+        (assoc info
+               :player/last-player-info-update (to-date (t/now)))
+        (if-not (nil? faction)
+          (assoc info :player/faction {:faction/torn-id faction})
+          (dissoc info :player/faction)))
       (throw (ex-info "Invalid player info" (s/explain-data :resp/player-info info))))))
+
+(defn add-player-info-tx [info]
+  [(-> info schema-player-info->db-player-info add-tempid)])
 
 (defn add-player-info* [conn info]
   (d/transact conn (add-player-info-tx info)))
@@ -142,17 +153,23 @@
     (dissoc attack :attack/attacker)
     attack))
 
-(defn schema-attack->db-attack [attack]
+(defn schema-attack->db-attack
+  [{:keys [attack/attacker attack/attacker-faction attack/defender-faction] :as attack}]
   (as-> attack a
     (assoc a
-           :attack/attacker {:player/torn-id (:attack/attacker attack)}
            :attack/defender {:player/torn-id (:attack/defender attack)}
            :attack/result [:db/ident (:attack/result attack)])
+    (if-not (nil? attacker)
+      (assoc a :attack/attacker {:player/torn-id attacker})
+      (dissoc a :attack/attacker))
+    (if-not (nil? attacker-faction)
+      (assoc a :attack/attacker-faction {:faction/torn-id attacker-faction})
+      (dissoc a :attack/attacker-faction))
+    (if-not (nil? defender-faction)
+      (assoc a :attack/defender-faction {:faction/torn-id defender-faction})
+      (dissoc a :attack/defender-faction))
     (update a :attack/timestamp-started to-date)
-    (update a :attack/timestamp-ended to-date)
-    (if (nil? (:attack/attacker attack))
-      (dissoc a :attack/attacker)
-      a)))
+    (update a :attack/timestamp-ended to-date)))
 
 (defn add-attacks-tx [attacks]
   (mapv (comp add-tempid schema-attack->db-attack) attacks))

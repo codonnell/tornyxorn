@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration>
+  <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%date{HH:mm:ss.SSS} %-5level [%logger] \(%thread\) %message%n</pattern>
+    </encoder>
+  </appender>
+  <!-- <appender name="File" class="ch.qos.logback.core.FileAppender"> -->
+  <!--   <file>tornyxorn.log</file> -->
+
+  <!--   <encoder> -->
+  <!--     <pattern>%date{HH:mm:ss.SSS} %-5level [%logger] \(%thread\) %message%n</pattern> -->
+  <!--   </encoder> -->
+  <!-- </appender> -->
+  <appender name="File" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- monthly rollover -->
+      <fileNamePattern>tornyxorn.%d{yyyy-MM}.log</fileNamePattern>
+
+      <!-- keep 6 months' worth of history capped at 3GB total size -->
+      <maxHistory>6</maxHistory>
+      <!-- <totalSizeCap>3GB</totalSizeCap> -->
+
+    </rollingPolicy>
+
+    <encoder>
+      <pattern>%date{HH:mm:ss.SSS} %-5level [%logger] \(%thread\) %message%n</pattern>
+    </encoder>
+  </appender>
+  <logger name="org.quartz.simpl.RAMJobStore" level="WARN"/>
+  <logger name="org.quartz.impl.DirectSchedulerFactory" level="WARN"/>
+  <logger name="org.quartz.core.SchedulerSignalerImpl" level="WARN"/>
+  <logger name="org.xnio" level="WARN"/>
+  <root level="INFO">
+    <appender-ref ref="Console"/>
+    <appender-ref ref="File"/>
+  </root>
+</configuration>
