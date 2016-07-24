@@ -18,7 +18,12 @@
                  [cheshire "5.5.0"]
                  [com.stuartsierra/component "0.3.1"]
                  [environ "1.0.3"]
-                 [com.amazonaws/aws-java-sdk-dynamodb "1.11.20"]
+                 [com.amazonaws/aws-java-sdk-dynamodb "1.11.20"
+                  :exclusions
+                  [com.fasterxml.jackson.core/jackson-core
+                   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
+                   commons-logging
+                   commons-codec]]
                  [org.clojure/tools.logging "0.3.1"]]
   :repositories {"my.datomic.com" {:url "https://my.datomic.com/repo"
                                    :username [:gpg :env/datomic_username]
