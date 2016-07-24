@@ -80,7 +80,7 @@
   (api/add-bucket! token-buckets api-key)
   (go-loop []
     (let [[_ c] (alts! [(timeout 6000) finish-chan])]
-      (when (not= c finish-chan)
+      (when-not (= c finish-chan)
         ;; Faction attack update api key needs higher throughput
         (>! (@token-buckets api-key) :token)
         (>! api-chan (faction-attack-msg faction-id api-key))

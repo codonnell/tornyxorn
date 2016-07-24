@@ -176,7 +176,7 @@
 
 ;; Message types
 
-(s/def :ws-msg/type #{"players" "submit-api-key"})
+(s/def :ws-msg/type #{"players" "submit-api-key" "pong"})
 
 (s/def :msg/type #{:msg/players :msg/submit-api-key})
 
@@ -190,6 +190,8 @@
   (s/keys :req-un [:ws-msg/type :msg/ids :player/api-key :msg/ws]))
 (defmethod ws-msg-type "submit-api-key" [_]
   (s/keys :req-un [:ws-msg/type :player/api-key :msg/ws]))
+(defmethod ws-msg-type "pong" [_]
+  (s/keys :req-un [:ws-msg/type :msg/ws]))
 (s/def :ws-msg/msg (s/multi-spec ws-msg-type :type))
 
 
