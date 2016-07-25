@@ -1,5 +1,5 @@
 (ns tornyxorn.update-handler
-  (:require [clojure.core.async :refer [<! >!! go-loop close! timeout]]
+  (:require [clojure.core.async :refer [<! >! >!! go-loop close! timeout]]
             [com.stuartsierra.component :as component]
             [com.rpl.specter :as sp]
             [com.rpl.specter.macros :refer [select]]
@@ -64,6 +64,7 @@
                               (sp/pred identity) #(db/has-api-key? db %)])
                      (distinct)
                      (map (partial db/player-by-id db)))]
+    ;; Give up waiting for battle stats update when a new attacks message arrives
     (reset! battle-stats-updates-needed #{})
     ;; Send messages requesting necessary battle stats updates
     (doseq [{:keys [player/torn-id player/api-key]} players]
@@ -75,7 +76,11 @@
     (go-loop [_ (<! (timeout 500))]
       (if (empty? @battle-stats-updates-needed)
         (do (log/debug "Necessary battle stats aquired!")
-            (store-update db msg))
+            (store-update db msg)
+            ;; Refresh difficulties for anyone interested in players
+            (doseq [p players]
+              (>! notify-chan {:msg/type :msg/unknown-player
+                               :msg/resp (into {} p)})))
         (recur (<! (timeout 500)))))))
 
 (defmethod handle-update :msg/battle-stats
@@ -113,7 +118,6 @@
                    :player/api-key api-key
                    :msg/ws (:msg/ws msg)}))
   (>!! notify-chan msg))
-
 
 (defrecord UpdateHandler [db req-chan update-chan notify-chan]
   component/Lifecycle
