@@ -6,9 +6,10 @@
             [clj-time.coerce :refer [from-date]]
             [tornyxorn.db :as db]
             [tornyxorn.torn-api :as api]
+            [tornyxorn.util :refer [do-every]]
             [clojure.tools.logging :as log]
             [clojure.string :as string]
-            [clojure.core.async :refer [go-loop <! >! close! alts! timeout chan]]))
+            [clojure.core.async :refer [go-loop <! >!! >! close! alts! timeout chan]]))
 
 (defn log-string [msg]
   (str "Updating "
@@ -78,25 +79,20 @@
 (defn continuously-update-faction-attacks [db api-chan token-buckets faction-id api-key finish-chan]
   (db/add-api-key db api-key)
   (api/add-bucket! token-buckets api-key)
-  (go-loop []
-    (let [[_ c] (alts! [(timeout 6000) finish-chan])]
-      (when-not (= c finish-chan)
-        ;; Faction attack update api key needs higher throughput
-        (>! (@token-buckets api-key) :token)
-        (>! api-chan (faction-attack-msg faction-id api-key))
-        (recur)))))
+  (do-every 6000 finish-chan
+            (fn []
+              (>!! (@token-buckets api-key) :token)
+              (>!! api-chan (faction-attack-msg faction-id api-key)))))
 
 (defn continuously-update-players [db api-chan finish-chan]
   "Updates the stalest player info every 30 seconds, one player per api key in
   the system."
-  (go-loop []
-    (let [[_ c] (alts! [(timeout 30000) finish-chan])]
-      (when-not (= c finish-chan)
-        (let [ps (db/stale-players db (count (db/api-keys db)))]
-          (when-not (empty? ps)
-            (>! api-chan {:msg/type :msg/unknown-players
-                          :msg/ids (map :player/torn-id ps)}))
-          (recur))))))
+  (do-every 30000 finish-chan
+            (fn []
+              (let [ps (db/stale-players db (count (db/api-keys db)))]
+                (when-not (empty? ps)
+                  (>!! api-chan {:msg/type :msg/unknown-players
+                                 :msg/ids (map :player/torn-id ps)}))))))
 
 (defrecord UpdateCreator [db req-chan api-chan update-chan faction-id api-key
                           finish-faction finish-players]

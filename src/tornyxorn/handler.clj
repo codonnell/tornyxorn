@@ -6,7 +6,9 @@
             [clojure.set :refer [rename-keys]]
             [clojure.spec :as s]
             [clojure.core.async :refer [>!! close! go-loop chan alts! timeout]]
+            [tornyxorn.notifier :as notify]
             [tornyxorn.spec :as spec]
+            [tornyxorn.util :refer [do-every]]
             [com.stuartsierra.component :as component]
             [tornyxorn.db :as db]))
 
@@ -43,12 +45,13 @@
 (defn continuously-ping-ws
   "Ping all websocket connections every 30 seconds to keep connections alive."
   [ws-map finish-chan]
-  (go-loop []
-    (let [[_ c] (alts! [(timeout 30000) finish-chan])]
-      (when-not (= c finish-chan)
-        (doseq [[ws _] @ws-map]
-          (async/send! ws (json/encode {:type "ping"})))
-        (recur)))))
+  (do-every 30000 finish-chan
+            (fn []
+              (doseq [[ws _] @ws-map]
+                (async/send! ws (json/encode {:type "ping"}))))))
+
+(defn add-to-ws-map [ws-map ws api-key]
+  (assoc ws-map ws {:player/api-key api-key :out-c (notify/notify-chan ws)}))
 
 (defn app [db req-chan ws-map]
   (fn [request]
@@ -84,7 +87,7 @@
                           ;; Pass along all other messages.
                           :else
                           (do
-                            (swap! ws-map update ch #(assoc % :player/api-key (:player/api-key parsed-msg)))
+                            (swap! ws-map add-to-ws-map ch api-key)
                             (when (= :msg/players (:msg/type parsed-msg))
                               (swap! ws-map update ch #(assoc % :players (set (:msg/ids parsed-msg)))))
                             (>!! req-chan parsed-msg))))))

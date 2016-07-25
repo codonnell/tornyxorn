@@ -1,5 +1,5 @@
 (ns tornyxorn.notifier
-  (:require [clojure.core.async :refer [<! go-loop close!]]
+  (:require [clojure.core.async :refer [<! go-loop close! timeout >! alts! chan >!!]]
             [com.rpl.specter :as sp]
             [com.rpl.specter.macros :refer [transform]]
             [immutant.web.async :as async]
@@ -8,6 +8,51 @@
             [clojure.tools.logging :as log]
             [tornyxorn.db :as db]
             [clojure.string :as string]))
+
+(defn batch [in out max-time max-count]
+  (let [lim-1 (dec max-count)]
+    (go-loop [buf {} t (timeout max-time)]
+      (let [[v p] (alts! [in t])]
+        (cond
+          (and (= p t) (not (empty? buf)))
+          (do
+            (log/info "buf:" buf)
+            (>! out buf)
+            (recur {} (timeout max-time)))
+
+          (= p t)
+          (recur {} (timeout max-time))
+
+          (nil? v)
+          (when-not (empty? buf)
+            (>! out buf))
+
+          (== (count buf) lim-1)
+          (do
+            (>! out (assoc buf (get v "torn-id") v))
+            (recur {} (timeout max-time)))
+
+          :else
+          (recur (assoc buf (get v "torn-id") v) t))))))
+
+(defn player-update-sink [ws]
+  (let [in-c (chan 1)]
+    (go-loop []
+      (when-some [ps (<! in-c)]
+        (log/info "sink:" ps)
+        (async/send! ws (json/encode {:type "players"
+                                      :players (vals ps)}))
+        (recur)))
+    in-c))
+
+(defn notify-chan
+  "Returns a channel that automatically batches and sends players messages it
+  receives to a websocket connection."
+  [ws]
+  (let [in-c (chan 1)
+        out-c (player-update-sink ws)]
+    (batch in-c out-c 500 50)
+    in-c))
 
 (defn log-string [msg]
   (str "Notifying of "
@@ -50,35 +95,27 @@
 (defmethod notify :msg/unknown-player [db ws-map {:keys [msg/resp] :as msg}]
   (log/debug "msg:" msg)
   (log/debug "ws-map:" @ws-map)
-  (doseq [[ws {:keys [player/api-key]}] (filter (fn [[_ {:keys [players]}]]
-                                                  (contains? players (:player/torn-id resp)))
-                                                @ws-map)]
+  (doseq [[ws {:keys [player/api-key out-c]}] (filter (fn [[_ {:keys [players]}]]
+                                                        (contains? players (:player/torn-id resp)))
+                                                      @ws-map)]
     (log/debug "Sending" resp)
-    (async/send!
-     ws
-     (json/encode
-      {:type "player"
-       :player (->> resp
-                    (add-difficulty db api-key)
-                    (select-player-ws-props))}))))
+    (>!! out-c (->> resp (add-difficulty db api-key) (select-player-ws-props)))))
 
-(defmethod notify :msg/known-players [db _ {:keys [msg/players msg/ws player/api-key]}]
-  (log/debug "Players:" players)
-  (async/send!
-   ws
-   (json/encode {:type "players"
-                 :players (mapv #(->> %
-                                      ;; convert datomic.query.EntityMap to PersistentHashMap
-                                      (into {})
-                                      (add-difficulty db api-key)
-                                      select-player-ws-props)
-                                players)})))
+(defmethod notify :msg/known-players [db ws-map {:keys [msg/players msg/ws player/api-key]}]
+  (log/info "Players:" players)
+  (doseq [p players]
+    (->> p
+         (into {}) ;; convert datomic.query.EntityMap to PersistentHashMap
+         (add-difficulty db api-key)
+         select-player-ws-props
+         (>!! (get-in @ws-map [ws :out-c])))))
 
 (defrecord Notifier [db notify-chan ws-map]
   component/Lifecycle
   (start [component]
     (go-loop [msg (<! notify-chan)]
       (when msg
+        (log/info (log-string msg))
         (log/debug "Notifier recieved:" msg)
         (notify db ws-map msg)
         (recur (<! notify-chan))))
