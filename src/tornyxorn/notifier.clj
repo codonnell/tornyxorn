@@ -16,7 +16,6 @@
         (cond
           (and (= p t) (not (empty? buf)))
           (do
-            (log/info "buf:" buf)
             (>! out buf)
             (recur {} (timeout max-time)))
 
@@ -39,7 +38,6 @@
   (let [in-c (chan 1)]
     (go-loop []
       (when-some [ps (<! in-c)]
-        (log/info "sink:" ps)
         (async/send! ws (json/encode {:type "players"
                                       :players (vals ps)}))
         (recur)))

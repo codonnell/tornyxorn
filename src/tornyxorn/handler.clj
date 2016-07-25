@@ -6,7 +6,7 @@
             [clojure.set :refer [rename-keys]]
             [clojure.spec :as s]
             [clojure.core.async :refer [>!! close! go-loop chan alts! timeout]]
-            [cloure.string :as string]
+            [clojure.string :as string]
             [tornyxorn.notifier :as notify]
             [tornyxorn.spec :as spec]
             [tornyxorn.util :refer [do-every]]
