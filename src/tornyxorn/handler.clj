@@ -68,8 +68,7 @@
      request
      {:on-open (fn [ch]
                  (log/info "Client connected.")
-                 (swap! ws-map assoc ch {})
-                 (swap! conns conj ch))
+                 (swap! ws-map assoc ch {}))
       :on-error (fn [ch e]
                   (log/error "Websocket error:" e))
       :on-message (fn [ch msg]
@@ -102,7 +101,7 @@
                             (>!! req-chan parsed-msg))))))
       :on-close (fn [ch {:keys [code reason]}]
                   (log/info "Client disconnected." ch)
-                  (swap! conns disj ch))
+                  (swap! ws-map dissoc ch))
       })))
 
 (defrecord Handler [handler db req-chan ws-map finish-pings]
