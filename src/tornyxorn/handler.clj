@@ -6,11 +6,20 @@
             [clojure.set :refer [rename-keys]]
             [clojure.spec :as s]
             [clojure.core.async :refer [>!! close! go-loop chan alts! timeout]]
+            [cloure.string :as string]
             [tornyxorn.notifier :as notify]
             [tornyxorn.spec :as spec]
             [tornyxorn.util :refer [do-every]]
             [com.stuartsierra.component :as component]
             [tornyxorn.db :as db]))
+
+(defn log-string [msg]
+  (when-not (= (:msg/type msg) :msg/pong)
+    (str "Received message: "
+         (case (:msg/type msg)
+           :msg/players (str "players " (string/join ", " (:msg/ids msg)))
+           :msg/submit-api-key (str "submit-api-key: " (:player/api-key msg))
+           (str "unexpected message " msg)))))
 
 (def conns (atom #{}))
 
@@ -64,7 +73,6 @@
       :on-error (fn [ch e]
                   (log/error "Websocket error:" e))
       :on-message (fn [ch msg]
-                    (log/info "Received message:" msg)
                     ;; Parse message
                     (let [parsed-msg (try (parse-msg (assoc (json/decode msg true) :ws ch))
                                           (catch clojure.lang.ExceptionInfo e
@@ -72,6 +80,7 @@
                                             (async/send! ch (json/encode {:error "Invalid message format"
                                                                           :data (str (ex-data e))}))
                                             nil))]
+                      (log/info (log-string parsed-msg))
                       (when-let [{:keys [player/api-key msg/type msg/ids] :as parsed-msg} parsed-msg]
                         ;; Do not pass along submit-api-key message when api key
                         ;; already exists. Immediately send response.
