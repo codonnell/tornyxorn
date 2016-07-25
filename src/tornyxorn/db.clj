@@ -286,7 +286,7 @@
     (cond
       (and (empty? easy-attacks) (empty? hard-attacks)) :unknown
       (empty? hard-attacks) :easy
-      (empty? easy-attacks) :hard
+      (empty? easy-attacks) :impossible
       :else :medium)))
 
 (defn difficulty [db attacker d-id]
