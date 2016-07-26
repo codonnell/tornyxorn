@@ -4,4 +4,5 @@
   (:gen-class))
 
 (defn -main [& args]
-  (component/start-system (prod-system)))
+  (def system (prod-system))
+  (alter-var-root #'system component/start-system))
