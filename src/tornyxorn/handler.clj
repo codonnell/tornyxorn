@@ -14,12 +14,11 @@
             [tornyxorn.db :as db]))
 
 (defn log-string [msg]
-  (when-not (= (:msg/type msg) :msg/pong)
-    (str "Received message: "
-         (case (:msg/type msg)
-           :msg/players (str "players " (string/join ", " (:msg/ids msg)))
-           :msg/submit-api-key (str "submit-api-key: " (:player/api-key msg))
-           (str "unexpected message " msg)))))
+  (str "Received message: "
+       (case (:msg/type msg)
+         :msg/players (str "players " (string/join ", " (:msg/ids msg)))
+         :msg/submit-api-key (str "submit-api-key: " (:player/api-key msg))
+         (str "unexpected message " msg))))
 
 (def conns (atom #{}))
 
@@ -79,7 +78,8 @@
                                             (async/send! ch (json/encode {:error "Invalid message format"
                                                                           :data (str (ex-data e))}))
                                             nil))]
-                      (log/info (log-string parsed-msg))
+                      (when-not (= :msg/pong (:msg/type parsed-msg))
+                        (log/info (log-string parsed-msg)))
                       (when-let [{:keys [player/api-key msg/type msg/ids] :as parsed-msg} parsed-msg]
                         ;; Do not pass along submit-api-key message when api key
                         ;; already exists. Immediately send response.

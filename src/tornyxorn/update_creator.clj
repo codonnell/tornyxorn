@@ -44,11 +44,12 @@
 (defmethod create-update :msg/players
   [db _ {:keys [msg/ids] :as msg}]
   (let [groups (group-by #(up-to-date-info? db %) ids)]
-    [(-> msg
-         (assoc :msg/type :msg/known-players, :msg/players (mapv #(db/player-by-id db %)
-                                                                 (groups true)))
-         (dissoc :msg/ids))
-     (assoc msg :msg/type :msg/unknown-players, :msg/ids (into [] (groups false)))]))
+    (remove (fn [m] (and (empty? (:msg/players m)) (empty? (:msg/ids m))))
+            [(-> msg
+                 (assoc :msg/type :msg/known-players, :msg/players (mapv #(db/player-by-id db %)
+                                                                         (groups true)))
+                 (dissoc :msg/ids))
+             (assoc msg :msg/type :msg/unknown-players, :msg/ids (into [] (groups false)))])))
 
 (defmethod create-update :msg/player-attacks
   [_ _ msg]
