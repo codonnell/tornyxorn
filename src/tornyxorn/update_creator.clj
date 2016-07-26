@@ -55,6 +55,10 @@
   [_ _ msg]
   [msg])
 
+(defmethod create-update :msg/player-attacks-full
+  [_ _ msg]
+  [msg])
+
 (defmethod create-update :default
   [_ _ {:keys [msg/ws] :as msg}]
   ;; msg should only be nil when component is shutting down
@@ -66,6 +70,7 @@
 (def update-dest
   {:msg/known-players :update-handler
    :msg/player-attacks :torn-api
+   :msg/player-attacks-full :torn-api
    :msg/battle-stats :torn-api
    :msg/unknown-players :torn-api
    :msg/submit-api-key :torn-api})

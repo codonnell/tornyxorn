@@ -110,7 +110,7 @@
     (>!! req-chan {:msg/type :msg/battle-stats
                    :player/torn-id torn-id
                    :player/api-key api-key})
-    (>!! req-chan {:msg/type :msg/player-attacks
+    (>!! req-chan {:msg/type :msg/player-attacks-full
                    :player/torn-id torn-id
                    :player/api-key api-key})
     (>!! req-chan {:msg/type :msg/players

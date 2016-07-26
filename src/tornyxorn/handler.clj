@@ -111,8 +111,8 @@
       (continuously-ping-ws ws-map finish-pings)
       (assoc component :handler (app db req-chan ws-map) :finish-pings finish-pings)))
   (stop [component]
-    (close! finish-pings)
-    (assoc component :handler nil :finish-pings nil)))
+    (when finish-pings (close! finish-pings))
+    (assoc component :handler nil)))
 
 (defn new-handler [{:keys [db req-chan ws-map] :as config}]
   (map->Handler config))
