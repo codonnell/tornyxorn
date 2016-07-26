@@ -1,4 +1,11 @@
 [
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/temp-api-key
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/doc "A temporary api key used while awaiting validation"
+  :db.install/_attribute :db.part/db}
+
  ;; player
 
  {:db/id #db/id[:db.part/db]

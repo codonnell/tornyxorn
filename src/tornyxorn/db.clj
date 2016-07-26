@@ -63,7 +63,7 @@
 
 
 (defn api-keys* [db]
-  (d/q '[:find [?k ...] :where [_ :player/api-key ?k]] db))
+  (d/q '[:find [?k ...] :where (or [_ :player/api-key ?k] [_ :player/temp-api-key ?k])] db))
 
 (defn api-keys [db]
   (api-keys* (-> db :conn d/db)))
@@ -226,7 +226,7 @@
 
 (defn add-api-key-tx [api-key]
   [{:db/id (d/tempid :db.part/user)
-    :player/api-key api-key}])
+    :player/temp-api-key api-key}])
 
 (defn add-api-key* [conn api-key]
   (d/transact conn (add-api-key-tx api-key)))
@@ -236,8 +236,13 @@
 
 
 (defn remove-api-key* [conn api-key]
-  (let [player-entid (d/q '[:find ?p . :in $ ?k :where [?p :player/api-key ?k]] (d/db conn))]
-    (d/transact conn [[:db/retract player-entid :player/api-key api-key]])))
+  (let [player-entid (d/q '[:find ?p . :in $ ?k :where [?p :player/api-key ?k]] (d/db conn) api-key)
+        temp-entids (d/q '[:find [?p ...] :in $ ?k :where [?p :player/temp-api-key ?k]] (d/db conn) api-key)]
+    (d/transact conn (filterv (fn [[_ entid _ _]] entid)
+                              (conj (mapv (fn [entid]
+                                            [:db/retract entid :player/temp-api-key api-key])
+                                          temp-entids)
+                                    [:db/retract player-entid :player/api-key api-key])))))
 
 (defn remove-api-key [db api-key]
   (remove-api-key* (:conn db) api-key))

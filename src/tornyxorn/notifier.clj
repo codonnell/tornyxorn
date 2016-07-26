@@ -73,7 +73,7 @@
 
 (defmethod notify :msg/error [_ ws-map {:keys [msg/ws error/error] :as msg}]
   (if (= :error/invalid-api-key (:error/type error))
-    (let [invalid-conns (filter (fn [[_ m]] (= (:api-key m) (:player/api-key error))) @ws-map)]
+    (let [invalid-conns (filter (fn [[_ m]] (= (:player/api-key m) (:player/api-key error))) @ws-map)]
       (doseq [[ws _] invalid-conns]
         (async/send! ws (json/encode {:type "error"
                                       :error {:type "Invalid API key"

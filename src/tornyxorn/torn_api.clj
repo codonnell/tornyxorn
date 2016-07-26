@@ -17,6 +17,7 @@
          :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
          :msg/faction-attacks (str "attacks for faction " (:faction/torn-id msg))
          :msg/player-attacks (str "attacks for player " (:player/torn-id msg))
+         :msg/player-attacks-full (str "full attacks for player " (:player/torn-id msg))
          :msg/submit-api-key (str "api key confirmation for " (:player/api-key msg))
          :msg/unknown-players (str "player info for " (string/join ", " (:msg/ids msg)))
          (str "unhandled msg type: " (:msg/type msg)))))
@@ -25,31 +26,31 @@
   (fn [{:keys [msg/req msg/resp] :as msg}]
     (if-let [err-code (get-in resp [:error :code])]
       (cond (or (= 1 err-code) (= 2 err-code))
-            (do (log/error "Invalid API key" (:player/api-key req))
-                (assoc msg
-                       :msg/type :msg/error
-                       :resp/type :resp/error
-                       :error/error {:error/type :error/invalid-api-key
-                                     :player/api-key (:player/api-key req)}))
+            (do (log/error "Invalid API key" (:api-key req))
+                [(assoc msg
+                        :msg/type :msg/error
+                        :resp/type :resp/error
+                        :error/error {:error/type :error/invalid-api-key
+                                      :player/api-key (:api-key req)})])
             ;; (throw (ex-info "Invalid API key" {:player/api-key (:player/api-key req)
             ;;                                    :error/type :error/invalid-api-key}))
 
             (= 5 err-code)
-            (do (log/error "Exceeded rate limit for" (:player/api-key req))
-                (assoc msg
-                       :msg/type :msg/error
-                       :resp/type :resp/error
-                       :error/error {:error/type :error/too-many-requests
-                                     :player/api-key (:player/api-key req)}))
+            (do (log/error "Exceeded rate limit for" (:api-key req))
+                [(assoc msg
+                        :msg/type :msg/error
+                        :resp/type :resp/error
+                        :error/error {:error/type :error/too-many-requests
+                                      :player/api-key (:api-key req)})])
             ;; (throw (ex-info "Too many requests" {:player/api-key (:player/api-key req)
             ;;                                      :error/type :too-many-requests}))
 
             (= 8 err-code)
             (do (log/error "Temporary IP ban")
-                (assoc msg
-                       :msg/type :msg/error
-                       :resp/type :resp/error
-                       :error/error {:error/type :error/temp-ip-ban}))
+                [(assoc msg
+                        :msg/type :msg/error
+                        :resp/type :resp/error
+                        :error/error {:error/type :error/temp-ip-ban})])
             ;; (throw (ex-info "Temporary IP ban" {}))
 
             :default (throw (ex-info "Unhandled error" msg)))
@@ -99,8 +100,9 @@
           :error/too-many-requests (do (go (dotimes [_ 20]
                                              (<! (get @token-buckets (:player/api-key error)))))
                                        nil)
-          :error/temp-ip-ban (doseq [[_ bucket] @token-buckets]
-                               (go (dotimes [_ 20] (<! bucket))))
+          :error/temp-ip-ban (do (doseq [[_ bucket] @token-buckets]
+                                   (go (dotimes [_ 20] (<! bucket))))
+                                 nil)
           msg)))))
 
 (defn query-url

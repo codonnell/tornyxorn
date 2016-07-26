@@ -46,11 +46,11 @@
   [db _ notify-chan token-buckets {:keys [error/error] :as msg}]
   (case (:error/type error)
     :error/invalid-api-key (do
-                             (log/warn "Invalid API key:" (:player/api-key error))
                              (swap! battle-stats-updates-needed disj
                                     (:player/torn-id (db/player-by-api-key db (:player/api-key error))))
-                             (db/remove-api-key (:player/api-key error))
-                             (api/del-bucket! token-buckets (:player/api-key error)))
+                             (db/remove-api-key db (:player/api-key error))
+                             (api/del-bucket! token-buckets (:player/api-key error))
+                             (>!! notify-chan msg))
     (log/error "Unhandled error:" msg)))
 
 (defmethod handle-update :msg/attacks
@@ -102,6 +102,7 @@
   [db req-chan notify-chan token-buckets {:keys [player/api-key msg/resp] :as msg}]
   (log/debug "Handling" msg)
   (let [player (assoc (:msg/resp msg) :player/api-key api-key)]
+    (db/remove-api-key db api-key) ; Remove temporary api key
     (log/info "Adding player" player)
     (db/add-player db player))
   (api/add-bucket! token-buckets api-key)
