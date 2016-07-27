@@ -118,7 +118,8 @@
    "Moderator" :player.role/moderator
    "Helper" :player.role/helper
    "NPC" :player.role/npc
-   "Civilian" :player.role/civilian})
+   "Civilian" :player.role/civilian
+   "Reporter" :player.role/reporter})
 
 ;; Response types
 
@@ -143,7 +144,7 @@
     (->RespItem [:friends] :player/friends identity ::required)
     (->RespItem [:enemies] :player/enemies identity ::required)
     (->RespItem [:karma] :player/karma identity ::required)
-    (->RespItem [:forum_posts] :player/forum-posts identity ::required)
+    (->RespItem [:forum_posts] :player/forum-posts nil->0 ::required)
     (->RespItem [:role] :player/role role-str->keyword ::required)
     (->RespItem [:donator] :player/donator? #(= 1 %) ::required)
     (->RespItem [:job :company_id] :player/company-id zero->nil ::required)

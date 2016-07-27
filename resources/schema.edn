@@ -1033,4 +1033,5 @@
  [:db/add #db/id[:db.part/user] :db/ident :player.role/helper]
  [:db/add #db/id[:db.part/user] :db/ident :player.role/npc]
  [:db/add #db/id[:db.part/user] :db/ident :player.role/civilian]
+ [:db/add #db/id[:db.part/user] :db/ident :player.role/reporter]
  ]
