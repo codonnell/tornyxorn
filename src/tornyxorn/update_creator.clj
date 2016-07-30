@@ -18,6 +18,7 @@
          :msg/submit-api-key (str "api key " (:player/api-key msg))
          :msg/players (str "players " (string/join ", " (:msg/ids msg)))
          :msg/player-attacks (str "attacks for " (:player/torn-id msg))
+         :msg/player-attacks-full (str "full attacks for " (:player/torn-id msg))
          (str "unexpected message: " msg))))
 
 (defmulti create-update

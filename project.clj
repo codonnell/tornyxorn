@@ -18,6 +18,7 @@
                  [cheshire "5.5.0"]
                  [com.stuartsierra/component "0.3.1"]
                  [environ "1.0.3"]
+                 [org.clojure/data.csv "0.1.3"]
                  [org.postgresql/postgresql "9.4.1209"]
                  [org.clojure/tools.logging "0.3.1"]]
   :repositories {"my.datomic.com" {:url "https://my.datomic.com/repo"

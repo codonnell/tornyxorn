@@ -15,7 +15,7 @@
        (case (:msg/type msg)
          :msg/error "error"
          :msg/attacks "attacks"
-         :msg/battle-stats (str "for " (:player/torn-id msg))
+         :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
          :msg/known-players (str "known players " (string/join ", " (map :player/torn-id (:msg/players msg))))
          :msg/unknown-player (str "unknown player " (-> msg :msg/resp :player/torn-id))
          :msg/submit-api-key (str "submitted API key: " (:player/api-key msg))
