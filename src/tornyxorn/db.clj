@@ -413,8 +413,8 @@
 (defn attack-data->csv* [db fname]
   (let [pairs (attack-pairs* db)]
     (with-open [f (io/writer fname)]
-      (csv/write-csv f (map (fn [k] (apply str (rest (str k))))
-                            (sort-by data-indices (keys data-indices))))
+      (csv/write-csv f [(map (fn [k] (apply str (rest (str k))))
+                             (sort-by data-indices (keys data-indices)))])
       (doseq [pair pairs]
         (csv/write-csv f [(->> pair
                                (map :player/torn-id)
