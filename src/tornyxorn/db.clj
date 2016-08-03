@@ -402,13 +402,82 @@
   (attack-data* (-> db :conn d/db)))
 
 (def data-indices
-  (sorted-map :attacker/revives-received 0, :attacker/total-respect 1, :attacker/people-busted 2, :attacker/bounties-collected 3, :attacker/spouse-mail-sent 4, :attacker/argentina-travel 5, :defender/logins 6, :attacker/trains-received 7, :attacker/attacks-lost 8, :defender/vicodin-taken 9, :attacker/highest-beaten 10, :attacker/merits-bought 11, :attacker/best-kill-streak 12, :attack/win-chance 13, :defender/awards 14, :attacker/faction-mail-sent 15, :attacker/bazaar-sales 16, :attacker/bounties-placed 17, :defender/bounties-received 18, :defender/critical-hits 19, :attacker/networth 20, :defender/items-bought 21, :attacker/artillery-hits 22, :attacker/bazaar-profit 23, :attacker/mission-credits 24, :defender/defends-draw 25, :attacker/company-mail-sent 26, :defender/shotgun-hits 27, :attacker/karma 28, :defender/mail-sent 29, :defender/defends-ran-away 30, :attacker/pcp-taken 31, :defender/duke-contracts-completed 32, :attacker/dump-finds 33, :attacker/enemies 34, :attacker/dubai-travel 35, :defender/largest-mug 36, :attacker/attacks-won 37, :attacker/speed-taken 38, :defender/trades 39, :defender/rounds-fired 40, :attacker/pistol-hits 41, :attacker/ecstasy-taken 42, :attacker/defends-lost 43, :attacker/missions-completed 44, :defender/items-sent 45, :attacker/contracts-completed 46, :attacker/rifle-hits 47, :attacker/shrooms-taken 48, :attacker/refills 49, :attacker/strength 50, :defender/torn-id 51, :attacker/london-travel 52, :defender/xanax-taken 53, :attacker/viruses-coded 54, :defender/auctions-sold 55, :defender/piercing-hits 56, :attacker/japan-travel 57, :defender/items-bought-abroad 58, :attacker/mexico-travel 59, :defender/points-bought 60, :attacker/bails-spent 61, :attacker/auctions-won 62, :attacker/attacks-ran-away 63, :attacker/blood-withdrawn 64, :defender/revives 65, :defender/mechanical-hits 66, :defender/personals-placed 67, :attacker/medical-items-used 68, :attacker/total-bounty-rewards 69, :attacker/weapons-bought 70, :defender/opium-taken 71, :defender/defends-won 72, :defender/times-jailed 73, :attacker/activity 74, :attacker/attacks-stealthed 75, :defender/level 76, :attacker/canada-travel 77, :attacker/classifieds-placed 78, :defender/city-finds 79, :defender/china-travel 80, :defender/bails-bought 81, :attacker/auctions-sold 82, :attacker/torn-id 83, :defender/clubbed-hits 84, :defender/times-traveled 85, :attacker/personals-placed 86, :defender/sa-travel 87, :defender/revives-received 88, :defender/people-busted 89, :attacker/temp-hits 90, :defender/max-life 91, :defender/hawaii-travel 92, :attacker/caymans-travel 93, :attacker/failed-busts 94, :defender/machine-gun-hits 95, :defender/drugs-taken 96, :attacker/bazaar-customers 97, :defender/overdoses 98, :attacker/dump-searches 99, :attacker/total-bounty-spent 100, :defender/friend-mail-sent 101, :defender/ketamine-taken 102, :attacker/defends-draw 103, :attacker/items-bought 104, :defender/bounties-collected 105, :attacker/last-action 106, :defender/attacks-assisted 107, :attacker/logins 108, :defender/lsd-taken 109, :defender/switzerland-travel 110, :attacker/money-mugged 111, :attacker/days-as-donator 112, :defender/smg-hits 113, :attacker/stat-enhancers-used 114, :defender/slashing-hits 115, :attacker/canabis-taken 116, :defender/signup 117, :defender/items-dumped 118, :attacker/critical-hits 119, :defender/japan-travel 120, :attacker/lsd-taken 121, :attacker/shotgun-hits 122, :defender/attacks-ran-away 123, :attacker/opium-taken 124, :defender/medical-items-used 125, :attacker/signup 126, :defender/karma 127, :defender/total-respect 128, :attacker/times-jailed 129, :defender/trains-received 130, :defender/spouse-mail-sent 131, :defender/argentina-travel 132, :attacker/duke-contracts-completed 133, :defender/attacks-won 134, :attacker/largest-mug 135, :defender/merits-bought 136, :defender/friends 137, :attacker/rounds-fired 138, :defender/best-kill-streak 139, :attacker/awards 140, :defender/faction-mail-sent 141, :attacker/speed 142, :defender/bazaar-sales 143, :defender/refills 144, :defender/times-hospitalized 145, :defender/missions-completed 146, :attacker/points-bought 147, :attacker/hawaii-travel 148, :defender/viruses-coded 149, :attacker/piercing-hits 150, :attacker/bounties-received 151, :attacker/items-bought-abroad 152, :defender/bounties-placed 153, :defender/attacks-draw 154, :defender/london-travel 155, :attacker/xanax-taken 156, :defender/bails-spent 157, :defender/activity 158, :defender/attacks-stealthed 159, :defender/bazaar-profit 160, :attacker/defends-won 161, :defender/artillery-hits 162, :defender/weapons-bought 163, :attacker/revives 164, :attacker/mechanical-hits 165, :attacker/mail-sent 166, :attacker/china-travel 167, :attacker/defends-ran-away 168, :attacker/trades 169, :defender/points-sold 170, :attacker/vicodin-taken 171, :defender/attacks-lost 172, :defender/dubai-travel 173, :defender/speed-taken 174, :defender/forum-posts 175, :defender/defends-lost 176, :attacker/items-sent 177, :defender/shrooms-taken 178, :defender/pistol-hits 179, :defender/rifle-hits 180, :attacker/forum-posts 181, :attacker/switzerland-travel 182, :defender/money-mugged 183, :attacker/points-sold 184, :attacker/max-life 185, :defender/failed-busts 186, :defender/mexico-travel 187, :defender/caymans-travel 188, :defender/auctions-won 189, :defender/temp-hits 190, :attacker/overdoses 191, :defender/blood-withdrawn 192, :defender/total-bounty-rewards 193, :defender/dump-searches 194, :attacker/drugs-taken 195, :defender/bazaar-customers 196, :attacker/bails-bought 197, :defender/dump-finds 198, :defender/pcp-taken 199, :defender/classifieds-placed 200, :attacker/city-finds 201, :attacker/defense 202, :attacker/attacks-draw 203, :attacker/times-traveled 204, :attacker/clubbed-hits 205, :defender/enemies 206, :attacker/level 207, :attacker/sa-travel 208, :defender/ecstasy-taken 209, :defender/contracts-completed 210, :defender/networth 211, :attacker/attacks-assisted 212, :attacker/friends 213, :defender/days-as-donator 214, :defender/last-action 215, :attacker/slashing-hits 216, :defender/company-mail-sent 217, :defender/stat-enhancers-used 218, :defender/mission-credits 219, :attacker/times-hospitalized 220, :attacker/machine-gun-hits 221, :attacker/smg-hits 222, :defender/canabis-taken 223, :defender/highest-beaten 224, :attacker/dexterity 225, :defender/total-bounty-spent 226, :defender/canada-travel 227, :attacker/ketamine-taken 228, :attacker/friend-mail-sent 229, :attacker/items-dumped 230))
+  {:attack/win-chance 0, :attacker/activity 1, :attacker/argentina-travel 2, :attacker/artillery-hits 3,
+   :attacker/attacks-assisted 4, :attacker/attacks-draw 5, :attacker/attacks-lost 6,
+   :attacker/attacks-ran-away 7, :attacker/attacks-stealthed 8, :attacker/attacks-won 9,
+   :attacker/auctions-sold 10, :attacker/auctions-won 11, :attacker/awards 12, :attacker/bails-bought 13,
+   :attacker/bails-spent 14, :attacker/bazaar-customers 15, :attacker/bazaar-profit 16,
+   :attacker/bazaar-sales 17, :attacker/best-kill-streak 18, :attacker/blood-withdrawn 19,
+   :attacker/bounties-collected 20, :attacker/bounties-placed 21, :attacker/bounties-received 22,
+   :attacker/canabis-taken 23, :attacker/canada-travel 24, :attacker/caymans-travel 25,
+   :attacker/china-travel 26, :attacker/city-finds 27, :attacker/classifieds-placed 28,
+   :attacker/clubbed-hits 29, :attacker/company-mail-sent 30, :attacker/contracts-completed 31,
+   :attacker/critical-hits 32, :attacker/days-as-donator 33, :attacker/defends-draw 34,
+   :attacker/defends-lost 35, :attacker/defends-ran-away 36, :attacker/defends-won 37,
+   :attacker/defense 38, :attacker/dexterity 39, :attacker/drugs-taken 40, :attacker/dubai-travel 41,
+   :attacker/duke-contracts-completed 42, :attacker/dump-finds 43, :attacker/dump-searches 44,
+   :attacker/ecstasy-taken 45, :attacker/enemies 46, :attacker/faction-mail-sent 47,
+   :attacker/failed-busts 48, :attacker/forum-posts 49, :attacker/friend-mail-sent 50,
+   :attacker/friends 51, :attacker/hawaii-travel 52, :attacker/highest-beaten 53, :attacker/items-bought 54,
+   :attacker/items-bought-abroad 55, :attacker/items-dumped 56, :attacker/items-sent 57,
+   :attacker/japan-travel 58, :attacker/karma 59, :attacker/ketamine-taken 60, :attacker/largest-mug 61,
+   :attacker/last-action 62, :attacker/level 63, :attacker/logins 64, :attacker/london-travel 65,
+   :attacker/lsd-taken 66, :attacker/machine-gun-hits 67, :attacker/mail-sent 68, :attacker/max-life 69,
+   :attacker/mechanical-hits 70, :attacker/medical-items-used 71, :attacker/merits-bought 72,
+   :attacker/mexico-travel 73, :attacker/mission-credits 74, :attacker/missions-completed 75,
+   :attacker/money-mugged 76, :attacker/networth 77, :attacker/opium-taken 78, :attacker/overdoses 79,
+   :attacker/pcp-taken 80, :attacker/people-busted 81, :attacker/personals-placed 82,
+   :attacker/piercing-hits 83, :attacker/pistol-hits 84, :attacker/points-bought 85,
+   :attacker/points-sold 86, :attacker/refills 87, :attacker/revives 88, :attacker/revives-received 89,
+   :attacker/rifle-hits 90, :attacker/rounds-fired 91, :attacker/sa-travel 92, :attacker/shotgun-hits 93,
+   :attacker/shrooms-taken 94, :attacker/signup 95, :attacker/slashing-hits 96, :attacker/smg-hits 97,
+   :attacker/speed 98, :attacker/speed-taken 99, :attacker/spouse-mail-sent 100,
+   :attacker/stat-enhancers-used 101, :attacker/strength 102, :attacker/switzerland-travel 103,
+   :attacker/temp-hits 104, :attacker/times-hospitalized 105, :attacker/times-jailed 106,
+   :attacker/times-traveled 107, :attacker/torn-id 108, :attacker/total-bounty-rewards 109,
+   :attacker/total-bounty-spent 110, :attacker/total-respect 111, :attacker/trades 112,
+   :attacker/trains-received 113, :attacker/vicodin-taken 114, :attacker/viruses-coded 115,
+   :attacker/weapons-bought 116, :attacker/xanax-taken 117, :defender/activity 118,
+   :defender/argentina-travel 119, :defender/artillery-hits 120, :defender/attacks-assisted 121,
+   :defender/attacks-draw 122, :defender/attacks-lost 123, :defender/attacks-ran-away 124,
+   :defender/attacks-stealthed 125, :defender/attacks-won 126, :defender/auctions-sold 127,
+   :defender/auctions-won 128, :defender/awards 129, :defender/bails-bought 130, :defender/bails-spent 131,
+   :defender/bazaar-customers 132, :defender/bazaar-profit 133, :defender/bazaar-sales 134,
+   :defender/best-kill-streak 135, :defender/blood-withdrawn 136, :defender/bounties-collected 137,
+   :defender/bounties-placed 138, :defender/bounties-received 139, :defender/canabis-taken 140,
+   :defender/canada-travel 141, :defender/caymans-travel 142, :defender/china-travel 143,
+   :defender/city-finds 144, :defender/classifieds-placed 145, :defender/clubbed-hits 146,
+   :defender/company-mail-sent 147, :defender/contracts-completed 148, :defender/critical-hits 149,
+   :defender/days-as-donator 150, :defender/defends-draw 151, :defender/defends-lost 152,
+   :defender/defends-ran-away 153, :defender/defends-won 154, :defender/drugs-taken 155,
+   :defender/dubai-travel 156, :defender/duke-contracts-completed 157, :defender/dump-finds 158,
+   :defender/dump-searches 159, :defender/ecstasy-taken 160, :defender/enemies 161,
+   :defender/faction-mail-sent 162, :defender/failed-busts 163, :defender/forum-posts 164,
+   :defender/friend-mail-sent 165, :defender/friends 166, :defender/hawaii-travel 167,
+   :defender/highest-beaten 168, :defender/items-bought 169, :defender/items-bought-abroad 170,
+   :defender/items-dumped 171, :defender/items-sent 172, :defender/japan-travel 173, :defender/karma 174,
+   :defender/ketamine-taken 175, :defender/largest-mug 176, :defender/last-action 177, :defender/level 178,
+   :defender/logins 179, :defender/london-travel 180, :defender/lsd-taken 181,
+   :defender/machine-gun-hits 182, :defender/mail-sent 183, :defender/max-life 184,
+   :defender/mechanical-hits 185, :defender/medical-items-used 186, :defender/merits-bought 187,
+   :defender/mexico-travel 188, :defender/mission-credits 189, :defender/missions-completed 190,
+   :defender/money-mugged 191, :defender/networth 192, :defender/opium-taken 193, :defender/overdoses 194,
+   :defender/pcp-taken 195, :defender/people-busted 196, :defender/personals-placed 197,
+   :defender/piercing-hits 198, :defender/pistol-hits 199, :defender/points-bought 200,
+   :defender/points-sold 201, :defender/refills 202, :defender/revives 203, :defender/revives-received 204,
+   :defender/rifle-hits 205, :defender/rounds-fired 206, :defender/sa-travel 207, :defender/shotgun-hits 208,
+   :defender/shrooms-taken 209, :defender/signup 210, :defender/slashing-hits 211, :defender/smg-hits 212,
+   :defender/speed-taken 213, :defender/spouse-mail-sent 214, :defender/stat-enhancers-used 215,
+   :defender/switzerland-travel 216, :defender/temp-hits 217, :defender/times-hospitalized 218,
+   :defender/times-jailed 219, :defender/times-traveled 220, :defender/torn-id 221,
+   :defender/total-bounty-rewards 222, :defender/total-bounty-spent 223, :defender/total-respect 224,
+   :defender/trades 225, :defender/trains-received 226, :defender/vicodin-taken 227,
+   :defender/viruses-coded 228, :defender/weapons-bought 229, :defender/xanax-taken 230})
 
 (defn data->vector [m]
-  (->> (set/rename-keys m data-indices)
-       (mapcat identity)
-       (apply sorted-map)
-       vals))
+  (->> (select-keys m (keys data-indices))
+       (sort-by (fn [[k v]] (data-indices k)))
+       (mapv second)))
 
 (defn attack-data->csv* [db fname]
   (let [pairs (attack-pairs* db)]
