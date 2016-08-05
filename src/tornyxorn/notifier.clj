@@ -28,27 +28,39 @@
 
           (== (count buf) lim-1)
           (do
-            (>! out (assoc buf (get v "torn-id") v))
+            (>! out (assoc buf (get v :player/torn-id) v))
             (recur {} (timeout max-time)))
 
           :else
-          (recur (assoc buf (get v "torn-id") v) t))))))
+          (recur (assoc buf (get v :player/torn-id) v) t))))))
 
-(defn player-update-sink [ws]
+(def player-keys [:player/torn-id :player/xanax-taken :player/stat-enhancers-used
+                  :player/refills :player/name :player/level :difficulty])
+
+(defn select-player-ws-props [player]
+  (transform [sp/ALL sp/FIRST] name (select-keys player player-keys)) )
+
+(defn player-update-sink [db ws api-key]
   (let [in-c (chan 1)]
     (go-loop []
       (when-some [ps (<! in-c)]
-        (async/send! ws (json/encode {:type "players"
-                                      :players (vals ps)}))
-        (recur)))
+        (let [msg {:type "players"
+                   :players (->> (vals ps)
+                                 (db/add-difficulties db (db/player-by-api-key db api-key))
+                                 (map select-player-ws-props))}]
+          (log/debug "Sending player:" msg)
+          (async/send! ws (json/encode msg))
+          (recur))))
     in-c))
 
 (defn notify-chan
   "Returns a channel that automatically batches and sends players messages it
-  receives to a websocket connection."
-  [ws]
+  receives to a websocket connection that is the first element of ws-entry.
+  Before sending out a batch, the channel will add difficulties to the batched
+  set of players."
+  [db ws api-key]
   (let [in-c (chan 1)
-        out-c (player-update-sink ws)]
+        out-c (player-update-sink db ws api-key)]
     (batch in-c out-c 500 50)
     in-c))
 
@@ -80,12 +92,6 @@
                                               :api-key (:player/api-key error)}}))))
     (log/error "Unhandled error:" msg)))
 
-(def player-keys [:player/torn-id :player/xanax-taken :player/stat-enhancers-used
-                  :player/refills :player/name :player/level :difficulty])
-
-(defn select-player-ws-props [player]
-  (transform [sp/ALL sp/FIRST] name (select-keys player player-keys)) )
-
 (defn add-difficulty [db attacker-key {:keys [player/torn-id] :as player}]
   (log/debug (type player))
   (assoc player :difficulty (db/difficulty db (db/player-by-api-key db attacker-key) torn-id)))
@@ -97,15 +103,15 @@
                                                         (contains? players (:player/torn-id resp)))
                                                       @ws-map)]
     (log/debug "Sending" resp)
-    (>!! out-c (->> resp (add-difficulty db api-key) (select-player-ws-props)))))
+    (>!! out-c resp #_(->> resp (add-difficulty db api-key) (select-player-ws-props)))))
 
 (defmethod notify :msg/known-players [db ws-map {:keys [msg/players msg/ws player/api-key]}]
   (log/info "Players:" players)
   (doseq [p players]
     (->> p
          (into {}) ;; convert datomic.query.EntityMap to PersistentHashMap
-         (add-difficulty db api-key)
-         select-player-ws-props
+         ;; (add-difficulty db api-key)
+         ;; select-player-ws-props
          (>!! (get-in @ws-map [ws :out-c])))))
 
 (defrecord Notifier [db notify-chan ws-map]

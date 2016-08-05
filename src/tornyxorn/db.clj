@@ -4,11 +4,14 @@
             [clojure.set :as set]
             [clojure.java.io :as io]
             [clojure.data.csv :as csv]
+            [org.httpkit.client :as http]
+            [cheshire.core :as json]
             [clj-time.core :as t]
             [clj-time.coerce :refer [to-date from-date to-long]]
             [com.rpl.specter :as sp]
             [com.rpl.specter.macros :refer [select transform]]
-            [com.stuartsierra.component :as component]))
+            [com.stuartsierra.component :as component]
+            [clojure.tools.logging :as log]))
 
 (defrecord Datomic [uri conn]
   component/Lifecycle
@@ -276,7 +279,7 @@
        (>= (total-stats (:attack/attacker attack))
            (total-stats attacker))))
 
-(defn difficulty* [db attacker defender-id]
+(defn difficulty* [db attacker defender]
   "Returns :easy if someone with fewer total stats than attacker beat defender,
   :hard if someone with more total stats than attacker lost to defender, :medium
   of both of these are true, and :unknown if neither are true."
@@ -289,23 +292,23 @@
                                  [?a :attack/attacker ?ap]
                                  [?ap :player/strength _ ?tx2]
                                  [(< ?tx2 ?tx1)]]
-                               db defender-id))
+                               db (:player/torn-id defender)))
         easy-attacks (filter (partial easy-attack? attacker) attacks-on-d)
         hard-attacks (filter (partial hard-attack? attacker) attacks-on-d)]
     (cond
-      (and (empty? easy-attacks) (empty? hard-attacks)) :unknown
-      (empty? hard-attacks) :easy
-      (empty? easy-attacks) :impossible
-      :else :medium)))
+      (and (empty? easy-attacks) (empty? hard-attacks)) [:unknown 1.0]
+      (empty? hard-attacks) [:easy 1.0]
+      (empty? easy-attacks) [:impossible 1.0]
+      :else [:medium 1.0])))
 
-(defn difficulty [db attacker d-id]
-  (difficulty* (-> db :conn d/db) attacker d-id))
+(defn difficulty [db attacker defender]
+  (difficulty* (-> db :conn d/db) attacker defender))
 
-(defn difficulties* [db attacker d-ids]
-  (mapv (partial difficulty* db attacker) d-ids))
+(defn difficulties* [db attacker defenders]
+  (mapv (partial difficulty* db attacker) defenders))
 
-(defn difficulties [db attacker d-ids]
-  (difficulties* (-> db :conn d/db) attacker d-ids))
+(defn difficulties [db attacker defenders]
+  (difficulties* (-> db :conn d/db) attacker defenders))
 
 ;; Dump attack info to csv for learning
 
@@ -339,7 +342,9 @@
     (change-ns m role)))
 
 (defn pct-wins [as]
-  (double (/ (count (filter #(identical? :attack/win (-> % :attack/result success-map)) as)) (count as))))
+  (if (zero? (count as))
+    nil
+    (double (/ (count (filter #(identical? :attack/win (-> % :attack/result success-map)) as)) (count as)))))
 
 (defn attack-pairs* [db]
   (d/q '[:find (pull ?at [:player/torn-id]) (pull ?d [:player/torn-id])
@@ -365,8 +370,8 @@
                             [?a :attack/attacker ?at]
                             [?a :attack/defender ?d]]
                           db at-id d-id))
-        attacker (transform-player (:attack/attacker (first attacks)) "attacker")
-        defender (transform-player (:attack/defender (first attacks)) "defender")
+        attacker (transform-player (player-by-id* db at-id) "attacker")
+        defender (transform-player (player-by-id* db d-id) "defender")
         win-chance (pct-wins attacks)]
     (merge attacker defender {:attack/win-chance win-chance})))
 
@@ -492,3 +497,30 @@
 
 (defn attack-data->csv [db fname]
   (attack-data->csv* (-> db :conn d/db) fname))
+
+
+(defn format-result [[i-prob e-prob m-prob]]
+  (cond (and (>= i-prob e-prob) (>= i-prob m-prob)) [:impossible i-prob]
+        (>= e-prob m-prob) [:easy e-prob]
+        :else [:medium m-prob]))
+
+(defn format-results [res]
+  (map format-result res))
+
+(defn learned-difficulty* [db at-id d-ids]
+  (let [data (mapv (comp #(subvec % 1) data->vector #(attack-pair-data* db [at-id %])) d-ids)
+        resp @(http/get "http://localhost:5000/difficulty"
+                        {:headers {"Content-Type" "application/json"}
+                         :body (json/encode {:data data})})]
+    (-> resp :body (json/decode true) :data format-results)))
+
+(defn add-difficulties [db attacker defenders]
+  (let [db (-> db :conn d/db)
+        diffs (map (partial difficulty* db attacker) defenders)
+        w-diffs (map #(assoc %1 :difficulty %2) defenders diffs)
+        groups (group-by (comp first :difficulty) w-diffs)
+        _ (log/debug groups)
+        unknowns (:unknown groups)
+        u-diffs (learned-difficulty* db (:player/torn-id attacker) (map :player/torn-id unknowns))
+        finished-groups (assoc groups :unknown (map #(assoc %1 :difficulty %2) unknowns u-diffs))]
+    (into [] cat (vals finished-groups))))

@@ -58,8 +58,8 @@
               (doseq [[ws _] @ws-map]
                 (async/send! ws (json/encode {:type "ping"}))))))
 
-(defn add-to-ws-map [ws-map ws api-key]
-  (assoc ws-map ws {:player/api-key api-key :out-c (notify/notify-chan ws)}))
+(defn add-to-ws-map [ws-map db ws api-key]
+  (assoc ws-map ws {:player/api-key api-key :out-c (notify/notify-chan db ws api-key)}))
 
 (defn app [db req-chan ws-map]
   (fn [request]
@@ -95,7 +95,7 @@
                           ;; Pass along all other messages.
                           :else
                           (do
-                            (swap! ws-map add-to-ws-map ch api-key)
+                            (swap! ws-map add-to-ws-map db ch api-key)
                             (when (= :msg/players (:msg/type parsed-msg))
                               (swap! ws-map update ch #(assoc % :players (set (:msg/ids parsed-msg)))))
                             (>!! req-chan parsed-msg))))))
