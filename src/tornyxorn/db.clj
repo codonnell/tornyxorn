@@ -423,17 +423,18 @@
 
 (def data-indices
   {:attack/win-chance 0, :attacker/activity 1, :attacker/attacks-won 2,
-   :attacker/awards 3, :attacker/highest-beaten 4, :attacker/last-action 5,
-   :attacker/level 6, :attacker/logins 7, :attacker/max-life 8,
-   :attacker/networth 9, :attacker/refills 10, :attacker/revives 11,
-   :attacker/stat-enhancers-used 12, :attacker/times-hospitalized 13,
-   :attacker/torn-id 14, :attacker/vicodin-taken 15, :attacker/xanax-taken 16,
-   :defender/activity 17, :defender/attacks-won 18, :defender/awards 19,
-   :defender/highest-beaten 20, :defender/last-action 21, :defender/level 22,
-   :defender/logins 23, :defender/max-life 24, :defender/networth 25,
-   :defender/refills 26, :defender/revives 27, :defender/stat-enhancers-used 28,
-   :defender/times-hospitalized 29, :defender/torn-id 30, :defender/vicodin-taken 31,
-   :defender/xanax-taken 32})
+   :attacker/awards 3, :attacker/defense 4, :attacker/dexterity 5,
+   :attacker/highest-beaten 6, :attacker/last-action 7, :attacker/level 8,
+   :attacker/logins 9, :attacker/max-life 10, :attacker/networth 11,
+   :attacker/refills 12, :attacker/revives 13, :attacker/speed 14,
+   :attacker/stat-enhancers-used 15, :attacker/strength 16,
+   :attacker/times-hospitalized 17, :attacker/torn-id 18, :attacker/vicodin-taken 19,
+   :attacker/xanax-taken 20, :defender/activity 21, :defender/attacks-won 22,
+   :defender/awards 23, :defender/highest-beaten 24, :defender/last-action 25,
+   :defender/level 26, :defender/logins 27, :defender/max-life 28,
+   :defender/networth 29, :defender/refills 30, :defender/revives 31,
+   :defender/stat-enhancers-used 32, :defender/times-hospitalized 33,
+   :defender/torn-id 34, :defender/vicodin-taken 35, :defender/xanax-taken 36})
 
 #_(def data-indices
     {:attack/win-chance 0, :attacker/activity 1, :attacker/argentina-travel 2, :attacker/artillery-hits 3,
