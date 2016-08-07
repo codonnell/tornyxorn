@@ -177,9 +177,9 @@
 
 ;; Message types
 
-(s/def :ws-msg/type #{"players" "submit-api-key" "pong"})
+(s/def :ws-msg/type #{"players" "submit-api-key" "pong" "battle-stats"})
 
-(s/def :msg/type #{:msg/players :msg/submit-api-key})
+(s/def :msg/type #{:msg/players :msg/submit-api-key :msg/battle-stats})
 
 (s/def :msg/ids (s/coll-of :player/torn-id))
 (s/def :msg/ws any?)
@@ -190,6 +190,8 @@
 (defmethod ws-msg-type "players" [_]
   (s/keys :req-un [:ws-msg/type :msg/ids :player/api-key :msg/ws]))
 (defmethod ws-msg-type "submit-api-key" [_]
+  (s/keys :req-un [:ws-msg/type :player/api-key :msg/ws]))
+(defmethod ws-msg-type "battle-stats" [_]
   (s/keys :req-un [:ws-msg/type :player/api-key :msg/ws]))
 (defmethod ws-msg-type "pong" [_]
   (s/keys :req-un [:ws-msg/type :msg/ws]))
@@ -202,6 +204,8 @@
 (defmethod msg-type :msg/players [_]
   (s/keys :req [:msg/type :msg/ws :msg/ids :player/api-key]))
 (defmethod msg-type :msg/submit-api-key [_]
+  (s/keys :req [:msg/type :msg/ws :player/api-key]))
+(defmethod msg-type :msg/battle-stats [_]
   (s/keys :req [:msg/type :msg/ws :player/api-key]))
 (s/def :msg/msg (s/multi-spec msg-type :msg/type))
 

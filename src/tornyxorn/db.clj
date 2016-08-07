@@ -283,23 +283,25 @@
   "Returns :easy if someone with fewer total stats than attacker beat defender,
   :hard if someone with more total stats than attacker lost to defender, :medium
   of both of these are true, and :unknown if neither are true."
-  (let [attacks-on-d (map (fn [[a tx]] (d/entity (d/as-of db tx) a))
-                          (d/q '[:find ?a ?tx1
-                                 :in $ ?id
-                                 :where
-                                 [?a :attack/defender ?d ?tx1]
-                                 [?d :player/torn-id ?id]
-                                 [?a :attack/attacker ?ap]
-                                 [?ap :player/strength _ ?tx2]
-                                 [(< ?tx2 ?tx1)]]
-                               db (:player/torn-id defender)))
-        easy-attacks (filter (partial easy-attack? attacker) attacks-on-d)
-        hard-attacks (filter (partial hard-attack? attacker) attacks-on-d)]
-    (cond
-      (and (empty? easy-attacks) (empty? hard-attacks)) [:unknown 1.0]
-      (empty? hard-attacks) [:easy 1.0]
-      (empty? easy-attacks) [:impossible 1.0]
-      :else [:medium 1.0])))
+  (if-not (and (:player/strength attacker) (:player/torn-id defender))
+    :unknown
+    (let [attacks-on-d (map (fn [[a tx]] (d/entity (d/as-of db tx) a))
+                            (d/q '[:find ?a ?tx1
+                                   :in $ ?id
+                                   :where
+                                   [?a :attack/defender ?d ?tx1]
+                                   [?d :player/torn-id ?id]
+                                   [?a :attack/attacker ?ap]
+                                   [?ap :player/strength _ ?tx2]
+                                   [(< ?tx2 ?tx1)]]
+                                 db (:player/torn-id defender)))
+          easy-attacks (filter (partial easy-attack? attacker) attacks-on-d)
+          hard-attacks (filter (partial hard-attack? attacker) attacks-on-d)]
+      (cond
+        (and (empty? easy-attacks) (empty? hard-attacks)) [:unknown 1.0]
+        (empty? hard-attacks) [:easy 1.0]
+        (empty? easy-attacks) [:impossible 1.0]
+        :else [:medium 1.0]))))
 
 (defn difficulty [db attacker defender]
   (difficulty* (-> db :conn d/db) attacker defender))
@@ -334,8 +336,21 @@
 
 (def label-keys [:player/torn-id])
 
+(defn with-mod-battle-stats [{:keys [player/strength player/strength-modifier
+                                     player/dexterity player/dexterity-modifier
+                                     player/speed player/speed-modifier
+                                     player/defense player/defense-modifier] :as m}]
+  (if strength
+    (assoc m
+           :player/strength (* strength (or strength-modifier 1.0))
+           :player/dexterity (* dexterity (or dexterity-modifier 1.0))
+           :player/speed (* speed (or speed-modifier 1.0))
+           :player/defense (* defense (or defense-modifier 1.0)))
+    m))
+
 (defn transform-player [m role]
   (as-> (into {} m) m
+    (with-mod-battle-stats m)
     (apply dissoc m to-remove)
     (update m :player/signup (comp to-long from-date))
     (update m :player/last-action (comp to-long from-date))
@@ -481,6 +496,7 @@
 
 (defn data->vector [m]
   (->> (select-keys m (keys data-indices))
+       ;; (select-keys (with-mod-battle-stats m) (keys data-indices))
        (sort-by (fn [[k v]] (data-indices k)))
        (mapv second)))
 

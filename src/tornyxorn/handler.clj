@@ -30,6 +30,7 @@
 
 (def msg-types
   {"players" :msg/players
+   "battle-stats" :msg/battle-stats
    "submit-api-key" :msg/submit-api-key
    "pong" :msg/pong})
 
@@ -59,7 +60,9 @@
                 (async/send! ws (json/encode {:type "ping"}))))))
 
 (defn add-to-ws-map [ws-map db ws api-key]
-  (assoc ws-map ws {:player/api-key api-key :out-c (notify/notify-chan db ws api-key)}))
+  (-> ws-map
+      (assoc-in [ws :player/api-key] api-key)
+      (assoc-in [ws :out-c] (notify/notify-chan db ws api-key))))
 
 (defn app [db req-chan ws-map]
   (fn [request]

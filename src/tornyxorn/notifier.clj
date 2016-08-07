@@ -67,6 +67,7 @@
 (defn log-string [msg]
   (str "Notifying of "
        (case (:msg/type msg)
+         :msg/update-all (str "updating players for " (:player/api-key msg))
          :msg/submit-api-key (str "adding API key " (:player/api-key msg))
          :msg/error (str "invalid API key: " (-> msg :error/error :player/api-key))
          :msg/unknown-player (str "new player info for " (-> msg :msg/resp :player/torn-id))
@@ -95,6 +96,14 @@
 (defn add-difficulty [db attacker-key {:keys [player/torn-id] :as player}]
   (log/debug (type player))
   (assoc player :difficulty (db/difficulty db (db/player-by-api-key db attacker-key) torn-id)))
+
+(defmethod notify :msg/update-all [db ws-map {:keys [player/api-key] :as msg}]
+  (doseq [[ws {:keys [out-c players]}] (filter (fn [[_ v]]
+                                                 (= (:player/api-key v) api-key))
+                                               @ws-map)]
+    ;; (log/info "updating" players)
+    (doseq [p-id players]
+      (>!! out-c (into {} (db/player-by-id db p-id))))))
 
 (defmethod notify :msg/unknown-player [db ws-map {:keys [msg/resp] :as msg}]
   (log/debug "msg:" msg)

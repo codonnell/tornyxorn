@@ -84,9 +84,10 @@
         (recur (<! (timeout 500)))))))
 
 (defmethod handle-update :msg/battle-stats
-  [db _ _ _ msg]
+  [db _ notify-chan _ {:keys [player/api-key] :as msg}]
   (store-update db msg)
-  (swap! battle-stats-updates-needed disj (:player/torn-id msg)))
+  (swap! battle-stats-updates-needed disj (:player/torn-id msg))
+  (>!! notify-chan {:msg/type :msg/update-all :player/api-key api-key}))
 
 (defmethod handle-update :msg/unknown-player
   [db _ notify-chan _ {:keys [msg/resp] :as msg}]
