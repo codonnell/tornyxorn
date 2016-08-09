@@ -64,24 +64,25 @@
                               (sp/pred identity) #(db/has-api-key? db %)])
                      (distinct)
                      (map (partial db/player-by-id db)))]
-    ;; Give up waiting for battle stats update when a new attacks message arrives
-    (reset! battle-stats-updates-needed #{})
-    ;; Send messages requesting necessary battle stats updates
-    (doseq [{:keys [player/torn-id player/api-key]} players]
-      (swap! battle-stats-updates-needed conj torn-id)
-      (>!! req-chan {:msg/type :msg/battle-stats
-                     :player/torn-id torn-id
-                     :player/api-key api-key}))
-    ;; Poll every 500ms waiting for necessary battle stats updates to be processed
-    (go-loop [_ (<! (timeout 500))]
-      (if (empty? @battle-stats-updates-needed)
-        (do (log/debug "Necessary battle stats aquired!")
-            (store-update db msg)
-            ;; Refresh difficulties for anyone interested in players
-            (doseq [p players]
-              (>! notify-chan {:msg/type :msg/unknown-player
-                               :msg/resp (into {} p)})))
-        (recur (<! (timeout 500)))))))
+    (when-not (empty? new-attacks)
+      ;; Give up waiting for battle stats update when a new attacks message arrives
+      (reset! battle-stats-updates-needed #{})
+      ;; Send messages requesting necessary battle stats updates
+      (doseq [{:keys [player/torn-id player/api-key]} players]
+        (swap! battle-stats-updates-needed conj torn-id)
+        (>!! req-chan {:msg/type :msg/battle-stats
+                       :player/torn-id torn-id
+                       :player/api-key api-key}))
+      ;; Poll every 500ms waiting for necessary battle stats updates to be processed
+      (go-loop [_ (<! (timeout 500))]
+        (if (empty? @battle-stats-updates-needed)
+          (do (log/debug "Necessary battle stats aquired!")
+              (store-update db msg)
+              ;; Refresh difficulties for anyone interested in players
+              (doseq [p players]
+                (>! notify-chan {:msg/type :msg/unknown-player
+                                 :msg/resp (into {} p)})))
+          (recur (<! (timeout 500))))))))
 
 (defmethod handle-update :msg/battle-stats
   [db _ notify-chan _ {:keys [player/api-key] :as msg}]
