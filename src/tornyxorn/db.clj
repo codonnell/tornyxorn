@@ -356,6 +356,13 @@
     (update m :player/last-action (comp to-long from-date))
     (change-ns m role)))
 
+(defn trainsform-player [m role]
+  (->
+   (apply dissoc m to-remove)
+   (update :player/signup (comp to-long from-date))
+   (update :player/last-action (comp to-long from-date))
+   (change-ns m role)))
+
 (defn pct-wins [as]
   (if (zero? (count as))
     nil
@@ -392,6 +399,21 @@
 
 (defn attack-pair-data [db pair]
   (attack-pair-data* (-> db :conn d/db) pair))
+
+
+(defn train-data* [db [at-id d-id]]
+  (let [attacks (map #(d/entity db %)
+                     (d/q '[:find [?a ...]
+                            :in $ ?at-id ?d-id
+                            :where [?at :player/torn-id ?at-id]
+                            [?d :player/torn-id ?d-id]
+                            [?a :attack/attacker ?at]
+                            [?a :attack/defender ?d]]
+                          db at-id d-id))
+        attacker (transform-player (player-by-id* db at-id) "attacker")
+        defender (transform-player (player-by-id* db d-id) "defender")
+        win-chance (pct-wins attacks)]
+    (merge attacker defender {:attack/win-chance win-chance :attack/count (count attacks)})))
 
 
 
@@ -494,10 +516,17 @@
    :defender/trades 225, :defender/trains-received 226, :defender/vicodin-taken 227,
    :defender/viruses-coded 228, :defender/weapons-bought 229, :defender/xanax-taken 230})
 
+(def train-indices (assoc (transform sp/MAP-VALS inc data-indices) :attack/count 0))
+
 (defn data->vector [m]
   (->> (select-keys m (keys data-indices))
        ;; (select-keys (with-mod-battle-stats m) (keys data-indices))
        (sort-by (fn [[k v]] (data-indices k)))
+       (mapv second)))
+
+(defn train-data->vector [m]
+  (->> (select-keys m (keys train-indices))
+       (sort-by (fn [[k v]] (train-indices k)))
        (mapv second)))
 
 (defn attack-data->csv* [db fname]
@@ -513,6 +542,30 @@
 
 (defn attack-data->csv [db fname]
   (attack-data->csv* (-> db :conn d/db) fname))
+
+
+(defn train-data->csv* [db fname]
+  (let [pairs (attack-pairs* db)]
+    (with-open [f (io/writer fname)]
+      (csv/write-csv f [(map (fn [k] (apply str (rest (str k))))
+                             (sort-by train-indices (keys train-indices)))])
+      (doseq [pair pairs]
+        (csv/write-csv f [(->> pair
+                               (map :player/torn-id)
+                               (train-data* db)
+                               train-data->vector)])))))
+
+
+(defn count-attacks* [db pair]
+  (d/q '[:find (count ?a) .
+         :in $ ?at-id ?d-id
+         :where [?at :player/torn-id ?at-id]
+         [?d :player/torn-id ?d-id]
+         [?a :attack/attacker ?at]
+         [?a :attack/defender ?d]]
+       db
+       (-> pair first :player/torn-id)
+       (-> pair second :player/torn-id)))
 
 
 (defn format-result [[i-prob e-prob m-prob]]
