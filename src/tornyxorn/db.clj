@@ -422,19 +422,14 @@
   (attack-data* (-> db :conn d/db)))
 
 (def data-indices
-  {:attack/win-chance 0, :attacker/activity 1, :attacker/attacks-won 2,
-   :attacker/awards 3, :attacker/defense 4, :attacker/dexterity 5,
-   :attacker/highest-beaten 6, :attacker/last-action 7, :attacker/level 8,
-   :attacker/logins 9, :attacker/max-life 10, :attacker/networth 11,
-   :attacker/refills 12, :attacker/revives 13, :attacker/speed 14,
-   :attacker/stat-enhancers-used 15, :attacker/strength 16,
-   :attacker/times-hospitalized 17, :attacker/torn-id 18, :attacker/vicodin-taken 19,
-   :attacker/xanax-taken 20, :defender/activity 21, :defender/attacks-won 22,
-   :defender/awards 23, :defender/highest-beaten 24, :defender/last-action 25,
-   :defender/level 26, :defender/logins 27, :defender/max-life 28,
-   :defender/networth 29, :defender/refills 30, :defender/revives 31,
-   :defender/stat-enhancers-used 32, :defender/times-hospitalized 33,
-   :defender/torn-id 34, :defender/vicodin-taken 35, :defender/xanax-taken 36})
+  {:attack/win-chance 0, :attacker/activity 1, :attacker/awards 2,
+   :attacker/defense 3, :attacker/dexterity 4, :attacker/last-action 5
+   :attacker/level 6, :attacker/logins 7, :attacker/max-life 8, :attacker/networth 8,
+   :attacker/refills 9, :attacker/signup 10, :attacker/speed 11, :attacker/stat-enhancers-used 12,
+   :attacker/strength 13, :attacker/xanax-taken 14, :defender/activity 15,
+   :defender/awards 16, :defender/last-action 17, :defender/level 18,
+   :defender/logins 19, :defender/max-life 20, :defender/networth 21, :defender/refills 22,
+   :defender/signup 23, :defender/stat-enhancers-used 24, :defender/xanax-taken 25})
 
 #_(def data-indices
     {:attack/win-chance 0, :attacker/activity 1, :attacker/argentina-travel 2, :attacker/artillery-hits 3,
@@ -508,6 +503,22 @@
      :defender/total-bounty-rewards 222, :defender/total-bounty-spent 223, :defender/total-respect 224,
      :defender/trades 225, :defender/trains-received 226, :defender/vicodin-taken 227,
      :defender/viruses-coded 228, :defender/weapons-bought 229, :defender/xanax-taken 230})
+
+;; (def data-indices
+;;   {:attack/win-chance 0, :attacker/activity 1, :attacker/attacks-won 2,
+;;    :attacker/awards 3, :attacker/defense 4, :attacker/dexterity 5,
+;;    :attacker/highest-beaten 6, :attacker/last-action 7, :attacker/level 8,
+;;    :attacker/logins 9, :attacker/max-life 10, :attacker/networth 11,
+;;    :attacker/refills 12, :attacker/revives 13, :attacker/speed 14,
+;;    :attacker/stat-enhancers-used 15, :attacker/strength 16,
+;;    :attacker/times-hospitalized 17, :attacker/torn-id 18, :attacker/vicodin-taken 19,
+;;    :attacker/xanax-taken 20, :defender/activity 21, :defender/attacks-won 22,
+;;    :defender/awards 23, :defender/highest-beaten 24, :defender/last-action 25,
+;;    :defender/level 26, :defender/logins 27, :defender/max-life 28,
+;;    :defender/networth 29, :defender/refills 30, :defender/revives 31,
+;;    :defender/stat-enhancers-used 32, :defender/times-hospitalized 33,
+;;    :defender/torn-id 34, :defender/vicodin-taken 35, :defender/xanax-taken 36})
+
 
 (defn data->vector [m]
   (->> (select-keys m (keys data-indices))
