@@ -551,7 +551,7 @@
 
 (defn learned-difficulty* [db at-id d-ids]
   (let [data (mapv (comp #(subvec % 1) data->vector #(attack-pair-data* db [at-id %])) d-ids)
-        resp @(http/get "http://localhost:5000/difficulty"
+        resp @(http/get "https://tornicorn.com/difficulty"
                         {:headers {"Content-Type" "application/json"}
                          :body (json/encode {:data data})})]
     (-> resp :body (json/decode true) :data format-results)))
