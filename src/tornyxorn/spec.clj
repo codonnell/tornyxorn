@@ -17,19 +17,24 @@
                              (inst? d) (from-date d)
                              :else ::s/invalid))))
 
+(def na-or-int
+  (s/conformer (fn [n] (cond (nat-int? n) n
+                             (= n "N/A") 0
+                             :else ::s/invalid))))
+
 (s/def :player/torn-id pos-int?)
 (s/def :player/api-key string?)
 (s/def :player/level nat-int?)
 (s/def :player/name string?)
 (s/def :player/signup date-spec)
 (s/def :player/last-action date-spec)
-(s/def :player/awards nat-int?)
+(s/def :player/awards na-or-int)
 (s/def :player/max-life pos-int?)
 ;; new
 (s/def :player/property-id nat-int?)
-(s/def :player/friends nat-int?)
-(s/def :player/enemies nat-int?)
-(s/def :player/forum-posts nat-int?)
+(s/def :player/friends na-or-int)
+(s/def :player/enemies na-or-int)
+(s/def :player/forum-posts na-or-int)
 (s/def :player/karma nat-int?)
 (s/def :player/role #{:player.role/admin :player.role/secretary :player.role/moderator
                       :player.role/helper :player.role/npc :player.role/civilian

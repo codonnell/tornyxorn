@@ -86,18 +86,23 @@
         (throw (ex-info "Invalid API Response" (s/explain-data name coerced-resp)))))))
 
 (defn parse-last-action [s]
-  (let [[n units & _] (string/split s #"\s")
-        unit-fn (get {"minutes" t/minutes
-                      "minute" t/minutes
-                      "hours" t/hours
-                      "hour" t/hours
-                      "days" t/days
-                      "day" t/days}
-                     units)]
-    (t/minus (t/now) (unit-fn (Integer/parseInt n)))))
+  (if (= "N/A" s)
+    (t/now)
+    (let [[n units & _] (string/split s #"\s")
+          unit-fn (get {"minutes" t/minutes
+                        "minute" t/minutes
+                        "hours" t/hours
+                        "hour" t/hours
+                        "days" t/days
+                        "day" t/days}
+                       units)]
+      (t/minus (t/now) (unit-fn (Integer/parseInt n))))))
 
 ;; Coercers
 
+
+(defn unknown->300 [n] (if (= "Unknown" n) 300 n)) ; Seriously fuck duke's profile
+(defn na->0 [n] (if (= "N/A" n) 0 n))
 (defn empty->nil [n] (if (string? n) nil n))
 (defn nil->0 [n] (or n 0))
 (defn zero->nil [n] (if (zero? n) nil n))
@@ -138,17 +143,18 @@
     (->RespItem [:signup] :player/signup #(f/parse (f/formatters :mysql) %) ::required)
     (->RespItem [:last_action] :player/last-action parse-last-action ::required)
     (->RespItem [:level] :player/level identity ::required)
-    (->RespItem [:awards] :player/awards identity ::required)
+    (->RespItem [:awards] :player/awards unknown->300 ::required)
     (->RespItem [:life :maximum] :player/max-life identity ::required)
     (->RespItem [:property_id] :player/property-id identity ::required)
-    (->RespItem [:friends] :player/friends identity ::required)
-    (->RespItem [:enemies] :player/enemies identity ::required)
+    (->RespItem [:friends] :player/friends na->0 ::required)
+    (->RespItem [:enemies] :player/enemies na->0 ::required)
     (->RespItem [:karma] :player/karma identity ::required)
-    (->RespItem [:forum_posts] :player/forum-posts nil->0 ::required)
+    (->RespItem [:forum_posts] :player/forum-posts (comp na->0 nil->0) ::required)
     (->RespItem [:role] :player/role role-str->keyword ::required)
     (->RespItem [:donator] :player/donator? #(= 1 %) ::required)
-    (->RespItem [:job :company_id] :player/company-id zero->nil ::required)
-    (->RespItem [:job :position] :player/position #(if (= "None" %) nil %) ::required)
+    (->RespItem [:job :company_id] :player/company-id zero->nil 0)
+    ;; For Duke's profile
+    (->RespItem [:job :position] :player/position #(if (= "None" %) nil %) "Loanshark")
     (->RespItem [:married :spouse_id] :player/spouse zero->nil ::required)
     (->RespItem [:faction :faction_id] :player/faction zero->nil ::required)
     (->RespItem [:personalstats :logins] :player/logins identity 0)
