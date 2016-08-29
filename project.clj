@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.9.0-alpha10"]
                  [clj-time "0.12.0"]
                  [org.clojure/tools.nrepl "0.2.11"]
-                 [com.rpl/specter "0.12.0-SNAPSHOT"]
+                 [com.rpl/specter "0.12.0"]
                  [org.clojure/core.async "0.2.385"]
                  [org.immutant/web "2.1.5"]
                  [http-kit "2.1.18"]

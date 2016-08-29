@@ -41,15 +41,16 @@
   (transform [sp/ALL sp/FIRST] name (select-keys player player-keys)) )
 
 (defn player-update-sink [db ws api-key]
-  (let [in-c (chan 1)]
+  (let [in-c (chan 500)]
     (go-loop []
       (when-some [ps (<! in-c)]
         (let [msg {:type "players"
                    :players (->> (vals ps)
                                  (db/add-difficulties db (db/player-by-api-key db api-key))
                                  (map select-player-ws-props))}]
-          (log/debug "Sending player:" msg)
-          (async/send! ws (json/encode msg))
+          (when ws
+            (log/debug "Sending player:" msg)
+            (async/send! ws (json/encode msg)))
           (recur))))
     in-c))
 
@@ -80,17 +81,17 @@
   (fn [_ _ {:keys [msg/type]}] type))
 
 (defmethod notify :msg/submit-api-key [_ _ {:keys [msg/ws player/api-key]}]
-  (async/send! ws (json/encode {:type "submit-api-key"
-                                :result "success"
-                                :api-key api-key})))
+  (when ws (async/send! ws (json/encode {:type "submit-api-key"
+                                         :result "success"
+                                         :api-key api-key}))))
 
 (defmethod notify :msg/error [_ ws-map {:keys [msg/ws error/error] :as msg}]
   (if (= :error/invalid-api-key (:error/type error))
     (let [invalid-conns (filter (fn [[_ m]] (= (:player/api-key m) (:player/api-key error))) @ws-map)]
       (doseq [[ws _] invalid-conns]
-        (async/send! ws (json/encode {:type "error"
-                                      :error {:type "Invalid API key"
-                                              :api-key (:player/api-key error)}}))))
+        (when ws (async/send! ws (json/encode {:type "error"
+                                               :error {:type "Invalid API key"
+                                                       :api-key (:player/api-key error)}})))))
     (log/error "Unhandled error:" msg)))
 
 (defn add-difficulty [db attacker-key {:keys [player/torn-id] :as player}]
@@ -115,13 +116,15 @@
     (>!! out-c resp #_(->> resp (add-difficulty db api-key) (select-player-ws-props)))))
 
 (defmethod notify :msg/known-players [db ws-map {:keys [msg/players msg/ws player/api-key]}]
-  (log/info "Players:" players)
+  #_(log/info "Players:" players)
   (doseq [p players]
-    (->> p
-         (into {}) ;; convert datomic.query.EntityMap to PersistentHashMap
-         ;; (add-difficulty db api-key)
-         ;; select-player-ws-props
-         (>!! (get-in @ws-map [ws :out-c])))))
+    (when-let [out-c (get-in @ws-map [ws :out-c])]
+      (>!! out-c (into {} p)))
+    #_(->> p
+           (into {}) ;; convert datomic.query.EntityMap to PersistentHashMap
+           ;; (add-difficulty db api-key)
+           ;; select-player-ws-props
+           (>!! (get-in @ws-map [ws :out-c])))))
 
 (defrecord Notifier [db notify-chan ws-map]
   component/Lifecycle

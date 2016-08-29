@@ -74,7 +74,7 @@
                        :player/torn-id torn-id
                        :player/api-key api-key}))
       ;; Poll every 500ms waiting for necessary battle stats updates to be processed
-      (go-loop [_ (<! (timeout 500))]
+      (go-loop [_ (<! (timeout 50))]
         (if (empty? @battle-stats-updates-needed)
           (do (log/debug "Necessary battle stats aquired!")
               (store-update db msg)
@@ -82,13 +82,13 @@
               (doseq [p players]
                 (>! notify-chan {:msg/type :msg/unknown-player
                                  :msg/resp (into {} p)})))
-          (recur (<! (timeout 500))))))))
+          (recur (<! (timeout 50))))))))
 
 (defmethod handle-update :msg/battle-stats
   [db _ notify-chan _ {:keys [player/api-key] :as msg}]
   (store-update db msg)
   (swap! battle-stats-updates-needed disj (:player/torn-id msg))
-  (>!! notify-chan {:msg/type :msg/update-all :player/api-key api-key}))
+  #_(>!! notify-chan {:msg/type :msg/update-all :player/api-key api-key}))
 
 (defmethod handle-update :msg/unknown-player
   [db _ notify-chan _ {:keys [msg/resp] :as msg}]

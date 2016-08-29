@@ -285,7 +285,7 @@
   of both of these are true, and :unknown if neither are true."
   (if-not (and (:player/strength attacker) (:player/torn-id defender))
     :unknown
-    (let [attacks-on-d (map (fn [[a tx]] (d/entity (d/as-of db tx) a))
+    (let [attacks-on-d (map (fn [[a tx]] (d/entity #_(d/as-of db tx) db a))
                             (d/q '[:find ?a ?tx1
                                    :in $ ?id
                                    :where
@@ -516,7 +516,7 @@
    :defender/trades 225, :defender/trains-received 226, :defender/vicodin-taken 227,
    :defender/viruses-coded 228, :defender/weapons-bought 229, :defender/xanax-taken 230})
 
-(def train-indices (assoc (transform sp/MAP-VALS inc data-indices) :attack/count 0))
+#_(def train-indices (assoc (transform sp/MAP-VALS inc data-indices) :attack/count 0))
 
 (defn data->vector [m]
   (->> (select-keys m (keys data-indices))
@@ -524,10 +524,10 @@
        (sort-by (fn [[k v]] (data-indices k)))
        (mapv second)))
 
-(defn train-data->vector [m]
-  (->> (select-keys m (keys train-indices))
-       (sort-by (fn [[k v]] (train-indices k)))
-       (mapv second)))
+#_(defn train-data->vector [m]
+    (->> (select-keys m (keys train-indices))
+         (sort-by (fn [[k v]] (train-indices k)))
+         (mapv second)))
 
 (defn attack-data->csv* [db fname]
   (let [pairs (attack-pairs* db)]
@@ -544,16 +544,16 @@
   (attack-data->csv* (-> db :conn d/db) fname))
 
 
-(defn train-data->csv* [db fname]
-  (let [pairs (attack-pairs* db)]
-    (with-open [f (io/writer fname)]
-      (csv/write-csv f [(map (fn [k] (apply str (rest (str k))))
-                             (sort-by train-indices (keys train-indices)))])
-      (doseq [pair pairs]
-        (csv/write-csv f [(->> pair
-                               (map :player/torn-id)
-                               (train-data* db)
-                               train-data->vector)])))))
+#_(defn train-data->csv* [db fname]
+    (let [pairs (attack-pairs* db)]
+      (with-open [f (io/writer fname)]
+        (csv/write-csv f [(map (fn [k] (apply str (rest (str k))))
+                               (sort-by train-indices (keys train-indices)))])
+        (doseq [pair pairs]
+          (csv/write-csv f [(->> pair
+                                 (map :player/torn-id)
+                                 (train-data* db)
+                                 train-data->vector)])))))
 
 
 (defn count-attacks* [db pair]
