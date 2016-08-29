@@ -279,29 +279,48 @@
        (>= (total-stats (:attack/attacker attack))
            (total-stats attacker))))
 
+(defn estimate-stats [db id]
+  (let [attacks (d/q '[:find [?a ...]
+                       :in $ ?id
+                       :where [?d :player/torn-id ?id]
+                       [?a :attack/defender ?d]
+                       [?a :attack/attacker ?ap]
+                       [?ap :player/strength _]]
+                     db id)
+        ]))
+
 (defn difficulty* [db attacker defender]
-  "Returns :easy if someone with fewer total stats than attacker beat defender,
+  (let [a (total-stats attacker)
+        l (or (:player/lowest-win defender) Double/MAX_VALUE)
+        h (or (:player/highest-loss defender) 0.0)]
+    (cond (and (> a l) (< a h)) [:medium 1.0]
+          (> a l) [:easy 1.0]
+          (< a h) [:impossible 1.0]
+          :else [:unknown 1.0])))
+
+#_(defn difficulty* [db attacker defender]
+    "Returns :easy if someone with fewer total stats than attacker beat defender,
   :hard if someone with more total stats than attacker lost to defender, :medium
   of both of these are true, and :unknown if neither are true."
-  (if-not (and (:player/strength attacker) (:player/torn-id defender))
-    :unknown
-    (let [attacks-on-d (map (fn [[a tx]] (d/entity #_(d/as-of db tx) db a))
-                            (d/q '[:find ?a ?tx1
-                                   :in $ ?id
-                                   :where
-                                   [?a :attack/defender ?d ?tx1]
-                                   [?d :player/torn-id ?id]
-                                   [?a :attack/attacker ?ap]
-                                   [?ap :player/strength _ ?tx2]
-                                   [(< ?tx2 ?tx1)]]
-                                 db (:player/torn-id defender)))
-          easy-attacks (filter (partial easy-attack? attacker) attacks-on-d)
-          hard-attacks (filter (partial hard-attack? attacker) attacks-on-d)]
-      (cond
-        (and (empty? easy-attacks) (empty? hard-attacks)) [:unknown 1.0]
-        (empty? hard-attacks) [:easy 1.0]
-        (empty? easy-attacks) [:impossible 1.0]
-        :else [:medium 1.0]))))
+    (if-not (and (:player/strength attacker) (:player/torn-id defender))
+      :unknown
+      (let [attacks-on-d (map (fn [[a tx]] (d/entity #_(d/as-of db tx) db a))
+                              (d/q '[:find ?a ?tx1
+                                     :in $ ?id
+                                     :where
+                                     [?a :attack/defender ?d ?tx1]
+                                     [?d :player/torn-id ?id]
+                                     [?a :attack/attacker ?ap]
+                                     [?ap :player/strength _ ?tx2]
+                                     [(< ?tx2 ?tx1)]]
+                                   db (:player/torn-id defender)))
+            easy-attacks (filter (partial easy-attack? attacker) attacks-on-d)
+            hard-attacks (filter (partial hard-attack? attacker) attacks-on-d)]
+        (cond
+          (and (empty? easy-attacks) (empty? hard-attacks)) [:unknown 1.0]
+          (empty? hard-attacks) [:easy 1.0]
+          (empty? easy-attacks) [:impossible 1.0]
+          :else [:medium 1.0]))))
 
 (defn difficulty [db attacker defender]
   (difficulty* (-> db :conn d/db) attacker defender))
