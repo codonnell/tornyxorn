@@ -178,11 +178,27 @@
     (update a :attack/timestamp-started to-date)
     (update a :attack/timestamp-ended to-date)))
 
-(defn add-attacks-tx [attacks]
+(defn difficulty-update
+  "Returns a map with :player/torn-id and (:player/lowest-win or
+  :player/highest-lost) when they need updating. If neither lowest-win nor
+  highest-loss need to be updated, returns nil."
+  [db attack]
+  (let [attacker (d/entity db [:player/torn-id (:attack/attacker attack)])
+        defender (d/entity db [:player/torn-id (:attack/defender attack)])]
+    (if (nil? (:player/strength attacker)) nil
+        (if (attack-success? attack)
+          (if (< (total-stats attacker) (or (:player/lowest-win defender) Double/MAX_VALUE))
+            {:player/torn-id (:player/torn-id defender) :player/lowest-win (total-stats attacker)}
+            nil)
+          (if (> (total-stats attacker) (or (:player/highest-loss defender) 0.0))
+            {:player/torn-id (:player/torn-id defender) :player/highest-loss (total-stats attacker)}
+            nil)))))
+
+(defn add-attacks-tx [db attacks]
   (mapv (comp add-tempid schema-attack->db-attack) attacks))
 
 (defn add-attacks* [conn attacks]
-  (d/transact conn (add-attacks-tx attacks)))
+  (d/transact conn (add-attacks-tx (d/db conn) attacks)))
 
 (defn add-attacks [db attacks]
   (add-attacks* (:conn db) attacks))
@@ -279,7 +295,7 @@
        (>= (total-stats (:attack/attacker attack))
            (total-stats attacker))))
 
-(defn estimate-stats [db id]
+(defn estimate-stats* [db id]
   (let [attacks (d/q '[:find [?a ...]
                        :in $ ?id
                        :where [?d :player/torn-id ?id]
@@ -287,7 +303,21 @@
                        [?a :attack/attacker ?ap]
                        [?ap :player/strength _]]
                      db id)
-        ]))
+        groups (group-by attack-success? attacks)
+        lowest-win (if (empty? (groups true)) nil
+                       (apply min (map #(total-stats (:attack/attacker %)) (groups true))))
+        highest-loss (if (empty? (groups false)) nil
+                         (apply max (map #(total-stats (:attack/attacker %)) (groups false))))]
+    (remove-nils {:player/lowest-win lowest-win :player/highest-loss highest-loss})))
+
+(defn renew-difficulties* [conn]
+  (let [db (d/db conn)
+        ids (d/q '[:find [?id ...] :where [_ :player/torn-id ?id]] db)]
+    (doseq [id ids]
+      (d/transact conn [(add-tempid (assoc (estimate-stats* db id) :player/torn-id id))]))))
+
+(defn renew-difficulties [db]
+  (renew-difficulties* (:conn db)))
 
 (defn difficulty* [db attacker defender]
   (let [a (total-stats attacker)
