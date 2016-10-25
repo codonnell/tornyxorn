@@ -53,13 +53,24 @@
 (defn player-by-api-key [db api-key]
   (player-by-api-key* (-> db :conn d/db) api-key))
 
+(defn attacks-by-player-id* [db torn-id]
+  (map (partial d/entity db)
+       (d/q '[:find [?a ...]
+              :in $ ?id
+              :where [?at :player/torn-id ?id]
+              [?a :attack/attacker ?at]]
+            db torn-id)))
+
+(defn attacks-by-player-id [db torn-id]
+  (attacks-by-player-id* (-> db :conn d/db) torn-id))
+
 
 (defn add-tempid [data]
   (assoc data :db/id (d/tempid :db.part/user)))
 
 
 (defn has-player-info?* [db torn-id]
-  (not (nil? (:player/last-info-update (player-by-id* db torn-id)))))
+  (not (nil? (:player/last-player-info-update (player-by-id* db torn-id)))))
 
 (defn has-player-info? [db torn-id]
   (has-player-info?* (-> db :conn d/db) torn-id))
@@ -73,30 +84,47 @@
   (api-keys* (-> db :conn d/db)))
 
 
-(defn stale-players* [db n]
+(defn take-priority-ids! [n priority-ids]
+  (dosync
+   (let [ids (take n @priority-ids)]
+     (alter priority-ids (fn [id-set] (reduce disj id-set ids)))
+     ids)))
+
+(defn never-updated-players* [db k]
+  (->> (d/q '[:find [?p ...]
+              :where [?p :player/torn-id]
+              (not [?p :player/last-player-info-update])]
+            db)
+       (take k)
+       (map (partial d/entity db))))
+
+(defn stale-players* [db k]
+  (->> (d/q '[:find [?p ...]
+              :where [?p :player/last-player-info-update]]
+            db)
+       (map (partial d/entity db))
+       (sort-by :player/last-player-info-update)
+       (take k)
+       (take-while #(t/before? (from-date (:player/last-player-info-update %))
+                               (t/ago (t/months 1))))))
+
+(defn stale-players* [db priority-ids n]
   "Returns a sequence of (up to) n players with the oldest player info that is
   at least a month old."
-  (let [ps (->> (d/q '[:find [?p ...]
-                       :where [?p :player/torn-id]
-                       (not [?p :player/last-player-info-update])]
-                     db)
-                (take n)
-                (map (partial d/entity db)))
-        k (count ps)]
-    (if (= n k)
-      ps
-      (->> (d/q '[:find [?p ...]
-                  :where [?p :player/last-player-info-update]]
-                db)
-           (map (partial d/entity db))
-           (sort-by :player/last-player-info-update)
-           (take (- n k))
-           (take-while #(t/before? (from-date (:player/last-player-info-update %))
-                                   (t/ago (t/months 1))))
-           (concat ps)))))
+  (let [prio-ids (take-priority-ids! n priority-ids)
+        prio-ps (map (fn [id] {:player/torn-id id}) prio-ids)
+        num-taken (count prio-ids)]
+    (if (= n num-taken)
+      prio-ps
+      (let [never-updated-ids (never-updated-players* db (- n num-taken))
+            num-taken (+ num-taken (count never-updated-ids))]
+        (if (= n num-taken)
+          (concat prio-ps never-updated-ids)
+          (let [stale-ids (stale-players* db (- n num-taken))]
+            (concat prio-ps never-updated-ids stale-ids)))))))
 
-(defn stale-players [db n]
-  (stale-players* (-> db :conn d/db) n))
+(defn stale-players [db priority-ids n]
+  (stale-players* (-> db :conn d/db) priority-ids n))
 
 
 (defn add-player-tx [player]
@@ -266,6 +294,22 @@
   (add-api-key* (:conn db) api-key))
 
 
+(defn remove-temp-api-key* [conn api-key]
+  (let [entity-ids (d/q '[:find [?p ...] :in $ ?k :where [?p :player/temp-api-key ?k]]
+                        (d/db conn) api-key)]
+    (d/transact conn
+                (into [] (comp (filter identity)
+                               (map (fn [entid] [:db/retract entid :player/temp-api-key api-key])))
+                      entity-ids)
+                #_(filterv (fn [[_ entid _ _]] entid)
+                           (mapv (fn [entid]
+                                   [:db/retract entid :player/temp-api-key api-key])
+                                 temp-entids)))))
+
+(defn remove-temp-api-key [db api-key]
+  (log/info "Removing temp api key" api-key)
+  (remove-temp-api-key* (:conn db) api-key))
+
 (defn remove-api-key* [conn api-key]
   (let [player-entid (->> api-key (player-by-api-key* (d/db conn)) :db/id)
         temp-entids (d/q '[:find [?p ...] :in $ ?k :where [?p :player/temp-api-key ?k]] (d/db conn) api-key)]
@@ -276,6 +320,7 @@
                                     [:db/retract player-entid :player/api-key api-key])))))
 
 (defn remove-api-key [db api-key]
+  (log/info "Removing api key" api-key)
   (remove-api-key* (:conn db) api-key))
 
 ;; Difficulty computation functions
@@ -291,19 +336,23 @@
            (total-stats attacker))))
 
 (defn estimate-stats* [db id]
-  (let [attacks (d/q '[:find [?a ...]
-                       :in $ ?id
-                       :where [?d :player/torn-id ?id]
-                       [?a :attack/defender ?d]
-                       [?a :attack/attacker ?ap]
-                       [?ap :player/strength _]]
-                     db id)
+  (let [attacks (map #(d/entity db %)
+                     (d/q '[:find [?a ...]
+                            :in $ ?id
+                            :where [?d :player/torn-id ?id]
+                            [?a :attack/defender ?d]
+                            [?a :attack/attacker ?ap]
+                            [?ap :player/strength _]]
+                          db id))
         groups (group-by attack-success? attacks)
         lowest-win (if (empty? (groups true)) nil
                        (apply min (map #(total-stats (:attack/attacker %)) (groups true))))
         highest-loss (if (empty? (groups false)) nil
                          (apply max (map #(total-stats (:attack/attacker %)) (groups false))))]
     (remove-nils {:player/lowest-win lowest-win :player/highest-loss highest-loss})))
+
+(defn estimate-stats [db id]
+  (estimate-stats* (-> db :conn d/db) id))
 
 (defn renew-difficulties* [conn]
   (let [db (d/db conn)
@@ -318,9 +367,9 @@
   (let [a (total-stats attacker)
         l (or (:player/lowest-win defender) Double/MAX_VALUE)
         h (or (:player/highest-loss defender) 0.0)]
-    (cond (and (> a l) (< a h)) [:medium 1.0]
-          (> a l) [:easy 1.0]
-          (< a h) [:impossible 1.0]
+    (cond (and (>= a l) (<= a h)) [:medium 1.0]
+          (>= a l) [:easy 1.0]
+          (<= a h) [:impossible 1.0]
           :else [:unknown 1.0])))
 
 #_(defn difficulty* [db attacker defender]
@@ -632,8 +681,10 @@
         diffs (map (partial difficulty* db attacker) defenders)
         w-diffs (map #(assoc %1 :difficulty %2) defenders diffs)
         groups (group-by (comp first :difficulty) w-diffs)
-        _ (log/debug groups)
-        unknowns (:unknown groups)
-        u-diffs (learned-difficulty* db (:player/torn-id attacker) (map :player/torn-id unknowns))
-        finished-groups (assoc groups :unknown (map #(assoc %1 :difficulty %2) unknowns u-diffs))]
-    (into [] cat (vals finished-groups))))
+        ;; _ (log/debug groups)
+        ;; unknowns (:unknown groups)
+        ;; u-diffs (learned-difficulty* db (:player/torn-id attacker) (map :player/torn-id unknowns))
+        ;; finished-groups (assoc groups :unknown (map #(assoc %1 :difficulty %2) unknowns u-diffs))
+        ]
+    #_(into [] cat (vals finished-groups))
+    (into [] cat (vals (dissoc groups :unknown)))))

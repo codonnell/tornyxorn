@@ -73,7 +73,7 @@
    :msg/player-attacks :torn-api
    :msg/player-attacks-full :torn-api
    :msg/battle-stats :torn-api
-   :msg/unknown-players :torn-api
+   :msg/unknown-players :priority-ids
    :msg/submit-api-key :torn-api})
 
 (def faction-attack-msg
@@ -91,25 +91,29 @@
               (>!! (@token-buckets api-key) :token)
               (>!! api-chan (faction-attack-msg faction-id api-key)))))
 
-(defn continuously-update-players [db api-chan finish-chan]
+(defn continuously-update-players [db api-chan priority-ids finish-chan]
   "Updates the stalest player info every 30 seconds, one player per api key in
   the system."
   (do-every 30000 finish-chan
             (fn []
-              (let [ps (db/stale-players db (count (db/api-keys db)))]
+              (let [ps (db/stale-players db priority-ids (count (db/api-keys db)))]
                 (when-not (empty? ps)
                   (>!! api-chan {:msg/type :msg/unknown-players
                                  :msg/ids (map :player/torn-id ps)}))))))
 
+(defn add-priority-ids! [priority-ids new-ids]
+  (dosync (alter priority-ids (fn [id-set] (reduce conj id-set new-ids)))))
+
 (defrecord UpdateCreator [db req-chan api-chan update-chan faction-id api-key
-                          finish-faction finish-players]
+                          priority-ids finish-faction finish-players]
   component/Lifecycle
   (start [component]
     (let [finish-faction (chan)
           finish-players (chan)
-          token-buckets (-> component :torn-api :token-buckets)]
+          token-buckets (-> component :torn-api :token-buckets)
+          priority-ids (ref #{})]
       (continuously-update-faction-attacks db api-chan token-buckets faction-id api-key finish-faction)
-      (continuously-update-players db api-chan finish-players)
+      (continuously-update-players db api-chan priority-ids finish-players)
       (go-loop [msg (<! req-chan)]
         (log/info (log-string msg))
         (log/debug "Websocket message:" msg)
@@ -118,10 +122,12 @@
         (doseq [msg (create-update db token-buckets msg)]
           (condp = (-> msg :msg/type update-dest)
             :update-handler (>! update-chan msg)
-            :torn-api (>! api-chan msg)))
+            :torn-api (>! api-chan msg)
+            :priority-ids (add-priority-ids! priority-ids (:msg/ids msg))))
         (when-let [msg (<! req-chan)]
           (recur msg)))
-      (assoc component :finish-faction finish-faction :finish-players finish-players)))
+      (assoc component :finish-faction finish-faction :finish-players finish-players
+             :priority-ids priority-ids)))
   (stop [component]
     (close! req-chan)
     (close! finish-faction)

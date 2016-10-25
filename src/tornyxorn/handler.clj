@@ -105,6 +105,7 @@
                             (>!! req-chan parsed-msg))))))
       :on-close (fn [ch {:keys [code reason]}]
                   (log/info "Client disconnected." ch)
+                  (close! (get-in @ws-map [ch :out-c]))
                   (swap! ws-map dissoc ch))
       })))
 

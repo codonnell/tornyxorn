@@ -162,7 +162,7 @@
 (defmethod create-reqs :msg/submit-api-key [update-req api-key-seq]
   [[(assoc update-req :msg/req
            (map->Request
-            {:endpoint "user" :selections ["basic"] :api-key (:player/api-key update-req)}))]
+            {:endpoint "user" :selections ["profile" "personalstats"] :api-key (:player/api-key update-req)}))]
    api-key-seq])
 
 (defmethod create-reqs :msg/unknown-players [update-req api-key-seq]
@@ -242,7 +242,7 @@
           (>! bucket :token))
         (recur)))))
 
-(defrecord TornApi [db api-chan update-chan token-buckets finish-chan]
+(defrecord TornApi [db api-chan update-chan token-buckets priority-ids finish-chan]
   component/Lifecycle
   (start [component]
     (let [token-buckets (atom {})

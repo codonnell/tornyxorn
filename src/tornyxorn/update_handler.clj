@@ -8,7 +8,8 @@
             [tornyxorn.torn-api :as api]
             [clojure.tools.logging :as log]
             [datomic.api :as d]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [environ.core :refer [env]]))
 
 (defn log-string [msg]
   (str "Handling "
@@ -19,8 +20,7 @@
          :msg/known-players (str "known players " (string/join ", " (map :player/torn-id (:msg/players msg))))
          :msg/unknown-player (str "unknown player " (-> msg :msg/resp :player/torn-id))
          :msg/submit-api-key (str "submitted API key: " (:player/api-key msg))
-         (str "unknown message type: " (:msg/type msg))
-         )))
+         (str "unknown message type: " (:msg/type msg)))))
 
 (defmulti store-update
   "Stores an update from the API to the database."
@@ -45,12 +45,14 @@
 (defmethod handle-update :msg/error
   [db _ notify-chan token-buckets {:keys [error/error] :as msg}]
   (case (:error/type error)
-    :error/invalid-api-key (do
-                             (swap! battle-stats-updates-needed disj
-                                    (:player/torn-id (db/player-by-api-key db (:player/api-key error))))
-                             (db/remove-api-key db (:player/api-key error))
-                             (api/del-bucket! token-buckets (:player/api-key error))
-                             (>!! notify-chan msg))
+    :error/invalid-api-key
+    (do
+      (swap! battle-stats-updates-needed disj
+             (:player/torn-id (db/player-by-api-key db (:player/api-key error))))
+      (db/remove-api-key db (:player/api-key error))
+      (api/del-bucket! token-buckets (:player/api-key error))
+      (>!! notify-chan msg))
+
     (log/error "Unhandled error:" msg)))
 
 (defmethod handle-update :msg/attacks
@@ -92,8 +94,10 @@
 
 (defmethod handle-update :msg/unknown-player
   [db _ notify-chan _ {:keys [msg/resp] :as msg}]
-  (store-update db msg)
-  (>!! notify-chan msg))
+  (let [with-difficulties (update msg :msg/resp merge (db/estimate-stats db (:player/torn-id resp)))]
+    (log/info (:msg/resp with-difficulties))
+    (store-update db with-difficulties)
+    (>!! notify-chan with-difficulties)))
 
 (defmethod handle-update :msg/known-players
   [_ _ notify-chan _ msg]
@@ -104,9 +108,12 @@
   [db req-chan notify-chan token-buckets {:keys [player/api-key msg/resp] :as msg}]
   (log/debug "Handling" msg)
   (let [player (assoc (:msg/resp msg) :player/api-key api-key)]
-    (db/remove-api-key db api-key) ; Remove temporary api key
+    ;; HACK
     (log/info "Adding player" player)
-    (db/add-player db player))
+    (db/add-player db (select-keys player [:player/torn-id :player/api-key]))
+    (store-update db msg)
+    (when (not= (env :api-key) api-key)
+      (db/remove-temp-api-key db api-key)))
   (api/add-bucket! token-buckets api-key)
   ;; TODO: Pass battle-stats (and attacks?) update to req-chan
   (let [{:keys [player/torn-id]} resp]

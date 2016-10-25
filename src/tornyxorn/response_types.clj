@@ -284,4 +284,4 @@
     (->RespItem [:respect_gain] :attack/respect double ::required)]))
 
 (def resp-types
-  [basic-info player-info battle-stats attacks])
+  [player-info battle-stats attacks])

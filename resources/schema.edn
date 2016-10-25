@@ -88,6 +88,22 @@
   :db/doc "Timestamp for the most recent battle stats update"
   :db.install/_attribute :db.part/db}
 
+ ;; difficulty estimates
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/lowest-win
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The lowest stats person to win against this player"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :player/highest-loss
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/index true
+  :db/doc "The highest stats person to lose against this player"
+  :db.install/_attribute :db.part/db}
+
  ;; profile
 
  {:db/id #db/id[:db.part/db]

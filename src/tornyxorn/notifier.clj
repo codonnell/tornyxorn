@@ -49,7 +49,6 @@
                                  (db/add-difficulties db (db/player-by-api-key db api-key))
                                  (map select-player-ws-props))}]
           (when ws
-            (log/debug "Sending player:" msg)
             (async/send! ws (json/encode msg)))
           (recur))))
     in-c))
