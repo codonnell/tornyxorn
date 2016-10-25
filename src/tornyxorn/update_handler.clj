@@ -107,27 +107,33 @@
 (defmethod handle-update :msg/submit-api-key
   [db req-chan notify-chan token-buckets {:keys [player/api-key msg/resp] :as msg}]
   (log/debug "Handling" msg)
-  (let [player (assoc (:msg/resp msg) :player/api-key api-key)]
-    ;; HACK
-    (log/info "Adding player" player)
-    (db/add-player db (select-keys player [:player/torn-id :player/api-key]))
-    (store-update db msg)
-    (when (not= (env :api-key) api-key)
-      (db/remove-temp-api-key db api-key)))
-  (api/add-bucket! token-buckets api-key)
-  ;; TODO: Pass battle-stats (and attacks?) update to req-chan
-  (let [{:keys [player/torn-id]} resp]
-    (>!! req-chan {:msg/type :msg/battle-stats
-                   :player/torn-id torn-id
-                   :player/api-key api-key})
-    (>!! req-chan {:msg/type :msg/player-attacks-full
-                   :player/torn-id torn-id
-                   :player/api-key api-key})
-    (>!! req-chan {:msg/type :msg/players
-                   :msg/ids [torn-id]
-                   :player/api-key api-key
-                   :msg/ws (:msg/ws msg)}))
-  (>!! notify-chan msg))
+  ;; HACK ALSO
+  (if (= (:player/faction resp) (Integer. (env :faction-id)))
+    (do
+      (let [player (assoc (:msg/resp msg) :player/api-key api-key)]
+        ;; HACK
+        (log/info "Adding player" player)
+        (db/add-player db (select-keys player [:player/torn-id :player/api-key]))
+        (store-update db msg)
+        (when (not= (env :api-key) api-key)
+          (db/remove-temp-api-key db api-key)))
+      (api/add-bucket! token-buckets api-key)
+      ;; TODO: Pass battle-stats (and attacks?) update to req-chan
+      (let [{:keys [player/torn-id]} resp]
+        (>!! req-chan {:msg/type :msg/battle-stats
+                       :player/torn-id torn-id
+                       :player/api-key api-key})
+        (>!! req-chan {:msg/type :msg/player-attacks-full
+                       :player/torn-id torn-id
+                       :player/api-key api-key})
+        #_(>!! req-chan {:msg/type :msg/players
+                         :msg/ids [torn-id]
+                         :player/api-key api-key
+                         :msg/ws (:msg/ws msg)}))
+      (>!! notify-chan msg))
+    (>!! notify-chan {:msg/type :msg/error
+                      :player/api-key api-key
+                      :error/error {:error/type :error/invalid-faction}})))
 
 (defrecord UpdateHandler [db req-chan update-chan notify-chan]
   component/Lifecycle

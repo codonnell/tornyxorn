@@ -84,13 +84,26 @@
                                          :result "success"
                                          :api-key api-key}))))
 
+(defn send-to-api-key [ws-map api-key msg]
+  (log/info "Sending" msg "to" api-key "using" ws-map)
+  (let [conns (filter (fn [[_ m]] (= (:player/api-key m) api-key)) ws-map)]
+    (doseq [[ws _] conns]
+      (when ws (async/send! ws (json/encode msg))))))
+
 (defmethod notify :msg/error [_ ws-map {:keys [msg/ws error/error] :as msg}]
-  (if (= :error/invalid-api-key (:error/type error))
-    (let [invalid-conns (filter (fn [[_ m]] (= (:player/api-key m) (:player/api-key error))) @ws-map)]
-      (doseq [[ws _] invalid-conns]
-        (when ws (async/send! ws (json/encode {:type "error"
-                                               :error {:type "Invalid API key"
-                                                       :api-key (:player/api-key error)}})))))
+  (case (:error/type error)
+    :error/invalid-api-key
+    (send-to-api-key @ws-map
+                     (:player/api-key error)
+                     {:type "error"
+                      :error {:type "Invalid API key"
+                              :api-key (:player/api-key error)}})
+    :error/invalid-faction
+    (send-to-api-key @ws-map
+                     (:player/api-key msg)
+                     {:type "error"
+                      :error {:type "Invalid faction"
+                              :api-key (:player/api-key error)}})
     (log/error "Unhandled error:" msg)))
 
 (defn add-difficulty [db attacker-key {:keys [player/torn-id] :as player}]
