@@ -61,7 +61,7 @@
         new-attacks (select-keys attack-map new-ids)
         players (->> new-attacks
                      (select [sp/MAP-VALS (sp/multi-path :attack/attacker :attack/defender)
-                              (sp/pred identity) #(db/has-api-key? db %)])
+                              (complement nil?) #(db/has-api-key? db %)])
                      (distinct)
                      (map (partial db/player-by-id db)))]
     (when-not (empty? new-attacks)
@@ -73,7 +73,7 @@
         (>!! req-chan {:msg/type :msg/battle-stats
                        :player/torn-id torn-id
                        :player/api-key api-key}))
-      ;; Poll every 500ms waiting for necessary battle stats updates to be processed
+      ;; Poll every 50ms waiting for necessary battle stats updates to be processed
       (go-loop [_ (<! (timeout 50))]
         (if (empty? @battle-stats-updates-needed)
           (do (log/debug "Necessary battle stats aquired!")

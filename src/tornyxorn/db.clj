@@ -40,21 +40,6 @@
 
 
 
-
-(defn add-tempid [data]
-  (assoc data :db/id (d/tempid :db.part/user)))
-
-
-(defn has-player-info?* [db torn-id]
-  (not (nil? (d/q '[:find ?i .
-                    :in $ ?id
-                    :where [?p :player/torn-id ?id] [?p :player/last-player-info-update ?i]]
-                  db torn-id))))
-
-(defn has-player-info? [db torn-id]
-  (has-player-info?* (-> db :conn d/db) torn-id))
-
-
 (defn player-by-id* [db torn-id]
   (d/entity db (d/q '[:find ?p . :in $ ?id :where [?p :player/torn-id ?id]] db torn-id)))
 
@@ -67,6 +52,18 @@
 
 (defn player-by-api-key [db api-key]
   (player-by-api-key* (-> db :conn d/db) api-key))
+
+
+(defn add-tempid [data]
+  (assoc data :db/id (d/tempid :db.part/user)))
+
+
+(defn has-player-info?* [db torn-id]
+  (not (nil? (:player/last-info-update (player-by-id* db torn-id)))))
+
+(defn has-player-info? [db torn-id]
+  (has-player-info?* (-> db :conn d/db) torn-id))
+
 
 
 (defn api-keys* [db]
@@ -84,19 +81,19 @@
                        (not [?p :player/last-player-info-update])]
                      db)
                 (take n)
-                (map (partial d/entity db)))]
-    (let [k (count ps)]
-      (if (= n k)
-        ps
-        (->> (d/q '[:find [?p ...]
-                    :where [?p :player/last-player-info-update]]
-                  db)
-             (map (partial d/entity db))
-             (sort-by :player/last-player-info-update)
-             (take (- n k))
-             (take-while #(t/before? (from-date (:player/last-player-info-update %))
-                                     (t/ago (t/months 1))))
-             (concat ps))))))
+                (map (partial d/entity db)))
+        k (count ps)]
+    (if (= n k)
+      ps
+      (->> (d/q '[:find [?p ...]
+                  :where [?p :player/last-player-info-update]]
+                db)
+           (map (partial d/entity db))
+           (sort-by :player/last-player-info-update)
+           (take (- n k))
+           (take-while #(t/before? (from-date (:player/last-player-info-update %))
+                                   (t/ago (t/months 1))))
+           (concat ps)))))
 
 (defn stale-players [db n]
   (stale-players* (-> db :conn d/db) n))
@@ -113,7 +110,7 @@
 
 
 (defn remove-nils [m]
-  (into {} (filter (fn [[k v]] (not (nil? v)))) m))
+  (into {} (remove (fn [[k v]] (nil? v))) m))
 
 (defn schema-player-info->db-player-info [{:keys [player/faction] :as info}]
   (let [parsed-info (s/conform :resp/player-info info)]
@@ -138,7 +135,6 @@
   (add-player-info* (:conn db) info))
 
 
-;; TODO: This needs a torn-id or api-key to work
 (defn update-battle-stats-tx [torn-id stats]
   (let [parsed-stats (s/conform :resp/battle-stats stats)]
     (if-not (= ::s/invalid parsed-stats)
@@ -178,13 +174,26 @@
     (update a :attack/timestamp-started to-date)
     (update a :attack/timestamp-ended to-date)))
 
-(defn difficulty-update
+(defn total-stats [p]
+  (+ (* (:player/strength p) (:player/strength-modifier p))
+     (* (:player/dexterity p) (:player/dexterity-modifier p))
+     (* (:player/speed p) (:player/speed-modifier p))
+     (* (:player/defense p) (:player/defense-modifier p))))
+
+(defn attack-success? [attack]
+  (contains? #{:attack.result/hospitalize :attack.result/mug :attack.result/leave}
+             (:attack/result attack)))
+
+(defn attack-fail? [attack]
+  (not (attack-success? attack)))
+
+(defn difficulty-update*
   "Returns a map with :player/torn-id and (:player/lowest-win or
   :player/highest-lost) when they need updating. If neither lowest-win nor
   highest-loss need to be updated, returns nil."
   [db attack]
-  (let [attacker (d/entity db [:player/torn-id (:attack/attacker attack)])
-        defender (d/entity db [:player/torn-id (:attack/defender attack)])]
+  (let [attacker (player-by-id* db (:attack/attacker attack))
+        defender (player-by-id* db (:attack/defender attack))]
     (if (nil? (:player/strength attacker)) nil
         (if (attack-success? attack)
           (if (< (total-stats attacker) (or (:player/lowest-win defender) Double/MAX_VALUE))
@@ -197,6 +206,7 @@
 (defn add-attacks-tx [db attacks]
   (mapv (comp add-tempid schema-attack->db-attack) attacks))
 
+;; TODO: Add difficulty-update* in here somewhere
 (defn add-attacks* [conn attacks]
   (d/transact conn (add-attacks-tx (d/db conn) attacks)))
 
@@ -240,9 +250,7 @@
 
 
 (defn get-api-key* [db torn-id]
-  (d/q '[:find ?k .
-         :in $ ?id
-         :where [?p :player/torn-id ?id] [?p :player/api-key ?k]]))
+  (:player/api-key (player-by-id* db torn-id)))
 
 (defn get-api-key [db torn-id]
   (get-api-key* (-> db :conn d/db) torn-id))
@@ -259,7 +267,7 @@
 
 
 (defn remove-api-key* [conn api-key]
-  (let [player-entid (d/q '[:find ?p . :in $ ?k :where [?p :player/api-key ?k]] (d/db conn) api-key)
+  (let [player-entid (->> api-key (player-by-api-key* (d/db conn)) :db/id)
         temp-entids (d/q '[:find [?p ...] :in $ ?k :where [?p :player/temp-api-key ?k]] (d/db conn) api-key)]
     (d/transact conn (filterv (fn [[_ entid _ _]] entid)
                               (conj (mapv (fn [entid]
@@ -271,19 +279,6 @@
   (remove-api-key* (:conn db) api-key))
 
 ;; Difficulty computation functions
-
-(defn total-stats [p]
-  (+ (* (:player/strength p) (:player/strength-modifier p))
-     (* (:player/dexterity p) (:player/dexterity-modifier p))
-     (* (:player/speed p) (:player/speed-modifier p))
-     (* (:player/defense p) (:player/defense-modifier p))))
-
-(defn attack-success? [attack]
-  (contains? #{:attack.result/hospitalize :attack.result/mug :attack.result/leave}
-             (:attack/result attack)))
-
-(defn attack-fail? [attack]
-  (not (attack-success? attack)))
 
 (defn easy-attack? [attacker attack]
   (and (attack-success? attack)
