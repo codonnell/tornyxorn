@@ -72,7 +72,7 @@
          :msg/error (str "invalid API key: " (-> msg :error/error :player/api-key))
          :msg/unknown-player (str "new player info for " (-> msg :msg/resp :player/torn-id))
          :msg/known-players (str "known player info for "
-                                 (string/join ", " (map :player/torn-id (:msg/players msg))))
+                                 #_(string/join ", " (map :player/torn-id (:msg/players msg))))
          (str "unknown msg type: " (:msg/type msg)))))
 
 (defmulti notify

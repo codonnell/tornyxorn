@@ -17,7 +17,7 @@
          :msg/error "error"
          :msg/attacks "attacks"
          :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
-         :msg/known-players (str "known players " (string/join ", " (map :player/torn-id (:msg/players msg))))
+         :msg/known-players (str "known players" #_(string/join ", " (map :player/torn-id (:msg/players msg))))
          :msg/unknown-player (str "unknown player " (-> msg :msg/resp :player/torn-id))
          :msg/submit-api-key (str "submitted API key: " (:player/api-key msg))
          (str "unknown message type: " (:msg/type msg)))))
@@ -95,7 +95,7 @@
 (defmethod handle-update :msg/unknown-player
   [db _ notify-chan _ {:keys [msg/resp] :as msg}]
   (let [with-difficulties (update msg :msg/resp merge (db/estimate-stats db (:player/torn-id resp)))]
-    (log/info (:msg/resp with-difficulties))
+    #_(log/info (:msg/resp with-difficulties))
     (store-update db with-difficulties)
     (>!! notify-chan with-difficulties)))
 
@@ -120,9 +120,9 @@
       (api/add-bucket! token-buckets api-key)
       ;; TODO: Pass battle-stats (and attacks?) update to req-chan
       (let [{:keys [player/torn-id]} resp]
-        (>!! req-chan {:msg/type :msg/battle-stats
-                       :player/torn-id torn-id
-                       :player/api-key api-key})
+        #_(>!! req-chan {:msg/type :msg/battle-stats
+                         :player/torn-id torn-id
+                         :player/api-key api-key})
         (>!! req-chan {:msg/type :msg/player-attacks-full
                        :player/torn-id torn-id
                        :player/api-key api-key})
@@ -132,7 +132,7 @@
                          :msg/ws (:msg/ws msg)}))
       (>!! notify-chan msg))
     (do
-      (db/remove-api-key api-key)
+      (db/remove-api-key db api-key)
       (>!! notify-chan {:msg/type :msg/error
                         :player/api-key api-key
                         :error/error {:error/type :error/invalid-faction}}))))

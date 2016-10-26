@@ -98,7 +98,7 @@
        (take k)
        (map (partial d/entity db))))
 
-(defn stale-players* [db k]
+(defn stale-ids* [db k]
   (->> (d/q '[:find [?p ...]
               :where [?p :player/last-player-info-update]]
             db)
@@ -120,7 +120,7 @@
             num-taken (+ num-taken (count never-updated-ids))]
         (if (= n num-taken)
           (concat prio-ps never-updated-ids)
-          (let [stale-ids (stale-players* db (- n num-taken))]
+          (let [stale-ids (stale-ids* db (- n num-taken))]
             (concat prio-ps never-updated-ids stale-ids)))))))
 
 (defn stale-players [db priority-ids n]
@@ -220,23 +220,36 @@
   :player/highest-lost) when they need updating. If neither lowest-win nor
   highest-loss need to be updated, returns nil."
   [db attack]
-  (let [attacker (player-by-id* db (:attack/attacker attack))
-        defender (player-by-id* db (:attack/defender attack))]
-    (if (nil? (:player/strength attacker)) nil
-        (if (attack-success? attack)
-          (if (< (total-stats attacker) (or (:player/lowest-win defender) Double/MAX_VALUE))
-            {:player/torn-id (:player/torn-id defender) :player/lowest-win (total-stats attacker)}
-            nil)
-          (if (> (total-stats attacker) (or (:player/highest-loss defender) 0.0))
-            {:player/torn-id (:player/torn-id defender) :player/highest-loss (total-stats attacker)}
-            nil)))))
+  (try
+    (let [attacker (player-by-id* db (:attack/attacker attack))
+          defender (player-by-id* db (:attack/defender attack))]
+      (if (or (nil? defender) (nil? attacker) (nil? (:player/strength attacker))) nil
+          (if (attack-success? attack)
+            (if (< (total-stats attacker) (or (:player/lowest-win defender) Double/MAX_VALUE))
+              {:player/torn-id (:player/torn-id defender) :player/lowest-win (total-stats attacker)}
+              nil)
+            (if (> (total-stats attacker) (or (:player/highest-loss defender) 0.0))
+              {:player/torn-id (:player/torn-id defender) :player/highest-loss (total-stats attacker)}
+              nil))))
+    (catch Exception e
+      nil)))
 
-(defn add-attacks-tx [db attacks]
+(defn add-attacks-tx [attacks]
   (mapv (comp add-tempid schema-attack->db-attack) attacks))
 
 ;; TODO: Add difficulty-update* in here somewhere
+#_(defn add-attacks* [conn attacks]
+    (let [diff-updates (into []
+                             (comp
+                              (map (partial difficulty-update* (d/db conn)))
+                              (filter identity)
+                              (map add-tempid))
+                             attacks)]
+      (log/info "diff-updates:" diff-updates)
+      (d/transact conn (into diff-updates cat (add-attacks-tx (d/db conn) attacks)))))
+
 (defn add-attacks* [conn attacks]
-  (d/transact conn (add-attacks-tx (d/db conn) attacks)))
+  (d/transact conn (add-attacks-tx attacks)))
 
 (defn add-attacks [db attacks]
   (add-attacks* (:conn db) attacks))
