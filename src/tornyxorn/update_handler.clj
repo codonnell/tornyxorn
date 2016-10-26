@@ -112,7 +112,7 @@
     (do
       (let [player (assoc (:msg/resp msg) :player/api-key api-key)]
         ;; HACK
-        (log/info "Adding player" player)
+        ;; (log/info "Adding player" player)
         (db/add-player db (select-keys player [:player/torn-id :player/api-key]))
         (store-update db msg)
         (when (not= (env :api-key) api-key)
@@ -131,9 +131,11 @@
                          :player/api-key api-key
                          :msg/ws (:msg/ws msg)}))
       (>!! notify-chan msg))
-    (>!! notify-chan {:msg/type :msg/error
-                      :player/api-key api-key
-                      :error/error {:error/type :error/invalid-faction}})))
+    (do
+      (db/remove-api-key api-key)
+      (>!! notify-chan {:msg/type :msg/error
+                        :player/api-key api-key
+                        :error/error {:error/type :error/invalid-faction}}))))
 
 (defrecord UpdateHandler [db req-chan update-chan notify-chan]
   component/Lifecycle
