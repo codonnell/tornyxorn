@@ -16,7 +16,7 @@
 (defn log-string [msg]
   (str "Received message: "
        (case (:msg/type msg)
-         :msg/players (str "players " (string/join ", " (:msg/ids msg)))
+         :msg/players (str "players" #_(string/join ", " (:msg/ids msg)))
          :msg/submit-api-key (str "submit-api-key: " (:player/api-key msg))
          :msg/battle-stats (str "battle-stats: " (:player/api-key msg))
          (str "unexpected message " msg))))
