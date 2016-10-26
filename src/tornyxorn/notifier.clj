@@ -85,7 +85,7 @@
                                          :api-key api-key}))))
 
 (defn send-to-api-key [ws-map api-key msg]
-  (log/info "Sending" msg "to" api-key "using" ws-map)
+  #_(log/info "Sending" msg "to" api-key "using" ws-map)
   (let [conns (filter (fn [[_ m]] (= (:player/api-key m) api-key)) ws-map)]
     (doseq [[ws _] conns]
       (when ws (async/send! ws (json/encode msg))))))
