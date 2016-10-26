@@ -234,6 +234,26 @@
     (catch Exception e
       nil)))
 
+(defn combine-updates [update-coll]
+  (letfn [(combine [u1 u2]
+            (cond
+              (nil? u1) u2
+              (nil? u2) u1
+
+              (and (:player/lowest-win u1) (:player/lowest-win u2))
+              (assoc u1 :player/lowest-win (min (:player/lowest-win u1) (:player/lowest-win u2)))
+
+              (and (:player/highest-loss u1) (:player/highest-loss u2))
+              (assoc u1 :player/highest-loss (max (:player/highest-loss u1) (:player/highest-loss u2)))
+
+              :else (merge u1 u2)))]
+    (reduce combine {} update-coll)))
+
+(defn difficulty-updates* [db attacks]
+  (let [updates (into [] (comp (map (partial difficulty-update* db)) (filter identity)) attacks)
+        by-id (group-by :player/torn-id updates)]
+    (into [] (map (comp add-tempid combine-updates)) (vals by-id))))
+
 (defn add-attacks-tx [attacks]
   (mapv (comp add-tempid schema-attack->db-attack) attacks))
 
@@ -249,7 +269,8 @@
       (d/transact conn (into diff-updates cat (add-attacks-tx (d/db conn) attacks)))))
 
 (defn add-attacks* [conn attacks]
-  (d/transact conn (add-attacks-tx attacks)))
+  (d/transact conn (into (add-attacks-tx attacks)
+                         (difficulty-updates* (d/db conn) attacks))))
 
 (defn add-attacks [db attacks]
   (add-attacks* (:conn db) attacks))
