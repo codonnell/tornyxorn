@@ -104,6 +104,7 @@
 (defn nil->empty [s] (or s ""))
 (defn timestamp->inst [n] (-> n (* 1000) (c/from-long)))
 (defn int->pct [n] (double (inc (/ n 100))))
+(defn zero-date->epoch [d] (if (= "0000-00-00 00:00:00" d) (f/unparse (t/epoch)) d))
 (def result-str->keyword
   {"Hospitalize" :attack.result/hospitalize
    "Stalemate" :attack.result/stalemate
@@ -135,7 +136,7 @@
    :resp/player-info
    [(->RespItem [:name] :player/name str ::required)
     (->RespItem [:player_id] :player/torn-id identity ::required)
-    (->RespItem [:signup] :player/signup #(f/parse (f/formatters :mysql) %) ::required)
+    (->RespItem [:signup] :player/signup #(f/parse (f/formatters :mysql) (zero-date->epoch %)) ::required)
     (->RespItem [:last_action] :player/last-action parse-last-action ::required)
     (->RespItem [:level] :player/level identity ::required)
     (->RespItem [:awards] :player/awards identity ::required)
