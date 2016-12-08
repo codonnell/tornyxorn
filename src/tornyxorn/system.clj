@@ -1,6 +1,7 @@
 (ns tornyxorn.system
   (:require [com.stuartsierra.component :as component]
             [clojure.core.async :refer [chan]]
+            [clojure.string :as string]
             [immutant.util]
             [environ.core :refer [env]]
             [tornyxorn.notifier :refer [new-notifier]]
@@ -29,8 +30,8 @@
                       (new-update-creator {:req-chan req-chan
                                            :api-chan api-chan
                                            :update-chan update-chan
-                                           :faction-id (Integer. (env :faction-id))
-                                           :api-key (env :api-key)})
+                                           :faction-ids (into [] (map #(Integer. %)) (string/split (env :faction-ids) #","))
+                                           :api-keys (into [] (string/split (env :api-keys) #","))})
                       [:db :torn-api])
      :torn-api (component/using
                 (new-torn-api {:api-chan api-chan

@@ -83,13 +83,15 @@
       :player/api-key api-key
       :faction/torn-id faction-id})))
 
-(defn continuously-update-faction-attacks [db api-chan token-buckets faction-id api-key finish-chan]
-  (db/add-api-key db api-key)
-  (api/add-bucket! token-buckets api-key)
-  (do-every 6000 finish-chan
-            (fn []
-              (>!! (@token-buckets api-key) :token)
-              (>!! api-chan (faction-attack-msg faction-id api-key)))))
+(defn continuously-update-faction-attacks [db api-chan token-buckets faction-ids api-keys finish-chan]
+  (let [faction-keys (map (fn [id k] [id k]) faction-ids api-keys)]
+    (doseq [[faction-id api-key] faction-keys]
+      (db/add-api-key db api-key)
+      (api/add-bucket! token-buckets api-key)
+      (do-every 6000 finish-chan
+                (fn []
+                  (>!! (@token-buckets api-key) :token)
+                  (>!! api-chan (faction-attack-msg faction-id api-key)))))))
 
 (defn continuously-update-players [db api-chan priority-ids finish-chan]
   "Updates the stalest player info every 30 seconds, one player per api key in
@@ -104,7 +106,7 @@
 (defn add-priority-ids! [priority-ids new-ids]
   (dosync (alter priority-ids (fn [id-set] (reduce conj id-set new-ids)))))
 
-(defrecord UpdateCreator [db req-chan api-chan update-chan faction-id api-key
+(defrecord UpdateCreator [db req-chan api-chan update-chan faction-ids api-key
                           priority-ids finish-faction finish-players]
   component/Lifecycle
   (start [component]
@@ -112,7 +114,7 @@
           finish-players (chan)
           token-buckets (-> component :torn-api :token-buckets)
           priority-ids (ref #{})]
-      (continuously-update-faction-attacks db api-chan token-buckets faction-id api-key finish-faction)
+      (continuously-update-faction-attacks db api-chan token-buckets faction-ids api-key finish-faction)
       (continuously-update-players db api-chan priority-ids finish-players)
       (go-loop [msg (<! req-chan)]
         (log/info (log-string msg))
