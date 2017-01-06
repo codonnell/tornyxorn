@@ -78,7 +78,8 @@
 
 
 (defn api-keys* [db]
-  (d/q '[:find [?k ...] :where (or [_ :player/api-key ?k] [_ :player/temp-api-key ?k])] db))
+  (filterv #(not= "" %)
+           (d/q '[:find [?k ...] :where (or [_ :player/api-key ?k] [_ :player/temp-api-key ?k])] db)))
 
 (defn api-keys [db]
   (api-keys* (-> db :conn d/db)))

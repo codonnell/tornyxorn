@@ -14,7 +14,7 @@
 (defn log-string [msg]
   (str "Requesting "
        (case (:msg/type msg)
-         :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
+         :msg/battle-stats (str "battle stats for " (:player/api-key msg))
          :msg/faction-attacks (str "attacks for faction " (:faction/torn-id msg))
          :msg/player-attacks (str "attacks for player " (:player/torn-id msg))
          :msg/player-attacks-full (str "full attacks for player " (:player/torn-id msg))
@@ -153,10 +153,10 @@
 (defrecord Request [endpoint id selections api-key])
 
 (defmethod create-reqs :msg/battle-stats
-  [{:keys [player/api-key :player/torn-id] :as update-req} api-key-seq]
+  [{:keys [player/api-key] :as update-req} api-key-seq]
   [[(assoc update-req :msg/req
            (map->Request
-            {:endpoint "user" :selections ["battlestats"] :api-key api-key :id torn-id}))]
+            {:endpoint "user" :selections ["battlestats"] :api-key api-key}))]
    api-key-seq])
 
 (defmethod create-reqs :msg/submit-api-key [update-req api-key-seq]

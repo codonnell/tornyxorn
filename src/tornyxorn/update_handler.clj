@@ -16,7 +16,7 @@
        (case (:msg/type msg)
          :msg/error "error"
          :msg/attacks "attacks"
-         :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
+         :msg/battle-stats (str "battle stats for " (:player/api-key msg))
          :msg/known-players (str "known players" #_(string/join ", " (map :player/torn-id (:msg/players msg))))
          :msg/unknown-player (str "unknown player " (-> msg :msg/resp :player/torn-id))
          :msg/submit-api-key (str "submitted API key: " (:player/api-key msg))
@@ -32,8 +32,9 @@
 (defmethod store-update :resp/player-info [db {:keys [msg/resp]}]
   (db/add-player-info db resp))
 
-(defmethod store-update :resp/battle-stats [db {:keys [msg/resp player/torn-id]}]
-  (db/update-battle-stats db torn-id resp))
+(defmethod store-update :resp/battle-stats [db {:keys [msg/resp player/torn-id] :as msg}]
+  (db/update-battle-stats db (:player/torn-id (db/player-by-api-key db (:player/api-key msg)))
+                          resp))
 
 (defmethod store-update :resp/attacks [db {:keys [msg/resp]}]
   (db/add-attacks db resp))

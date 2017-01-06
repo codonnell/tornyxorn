@@ -14,7 +14,7 @@
 (defn log-string [msg]
   (str "Updating "
        (case (:msg/type msg)
-         :msg/battle-stats (str "battle stats for " (:player/torn-id msg))
+         :msg/battle-stats (str "battle stats for " (:player/api-key msg))
          :msg/submit-api-key (str "api key " (:player/api-key msg))
          :msg/players (str "players" #_(string/join ", " (:msg/ids msg)))
          :msg/player-attacks (str "attacks for " (:player/torn-id msg))
