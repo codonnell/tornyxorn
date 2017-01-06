@@ -31,9 +31,10 @@
 (s/def :player/enemies nat-int?)
 (s/def :player/forum-posts nat-int?)
 (s/def :player/karma nat-int?)
-(s/def :player/role #{:player.role/admin :player.role/secretary :player.role/moderator
-                      :player.role/helper :player.role/npc :player.role/civilian
-                      :player.role/reporter})
+(s/def :player/role
+  #{:player.role/admin :player.role/officer :player.role/secretary :player.role/moderator
+    :player.role/helper :player.role/npc :player.role/civilian
+    :player.role/reporter})
 (s/def :player/donator? boolean?)
 (s/def :player/company-id (s/nilable pos-int?))
 (s/def :player/position (s/nilable string?))

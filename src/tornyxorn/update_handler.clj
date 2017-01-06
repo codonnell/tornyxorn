@@ -108,7 +108,7 @@
   [db req-chan notify-chan token-buckets {:keys [player/api-key msg/resp] :as msg}]
   (log/debug "Handling" msg)
   ;; HACK ALSO
-  (if (contains? (into #{} (map #(Integer. %)) (string/split (env :faction-ids) #",")))
+  (if (contains? (into #{} (map #(Integer. %)) (string/split (env :faction-ids) #",")) (:player/faction resp))
     (do
       (let [player (assoc (:msg/resp msg) :player/api-key api-key)]
         ;; HACK
