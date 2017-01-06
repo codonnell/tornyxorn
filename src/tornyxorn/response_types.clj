@@ -115,6 +115,7 @@
    "Timeout" :attack.result/timeout})
 (def role-str->keyword
   {"Admin" :player.role/admin
+   "Officer" :player.role/officer
    "Secretary" :player.role/secretary
    "Moderator" :player.role/moderator
    "Helper" :player.role/helper

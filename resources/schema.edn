@@ -1044,6 +1044,7 @@
 
  ;; player role enum values
  [:db/add #db/id[:db.part/user] :db/ident :player.role/admin]
+ [:db/add #db/id[:db.part/user] :db/ident :player.role/officer]
  [:db/add #db/id[:db.part/user] :db/ident :player.role/secretary]
  [:db/add #db/id[:db.part/user] :db/ident :player.role/moderator]
  [:db/add #db/id[:db.part/user] :db/ident :player.role/helper]
