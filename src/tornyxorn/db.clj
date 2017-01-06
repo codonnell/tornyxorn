@@ -131,7 +131,7 @@
   [(add-tempid player)])
 
 (defn add-player* [conn player]
-  (d/transact conn (add-player-tx player)))
+  @(d/transact conn (add-player-tx player)))
 
 (defn add-player [db player]
   (add-player* (:conn db) player))
@@ -157,7 +157,7 @@
   [(-> info schema-player-info->db-player-info add-tempid)])
 
 (defn add-player-info* [conn info]
-  (d/transact conn (add-player-info-tx info)))
+  @(d/transact conn (add-player-info-tx info)))
 
 (defn add-player-info [db info]
   (add-player-info* (:conn db) info))
@@ -173,7 +173,7 @@
       (throw (ex-info "Invalid battle stats" (s/explain-data :resp/battle-stats stats))))))
 
 (defn update-battle-stats* [conn torn-id stats]
-  (d/transact conn (update-battle-stats-tx torn-id stats)))
+  @(d/transact conn (update-battle-stats-tx torn-id stats)))
 
 (defn update-battle-stats [db torn-id stats]
   (update-battle-stats* (:conn db) torn-id stats))
@@ -269,8 +269,8 @@
       (d/transact conn (into diff-updates cat (add-attacks-tx (d/db conn) attacks)))))
 
 (defn add-attacks* [conn attacks]
-  (d/transact conn (into (add-attacks-tx attacks)
-                         (difficulty-updates* (d/db conn) attacks))))
+  @(d/transact conn (into (add-attacks-tx attacks)
+                          (difficulty-updates* (d/db conn) attacks))))
 
 (defn add-attacks [db attacks]
   (add-attacks* (:conn db) attacks))
@@ -305,7 +305,7 @@
       (throw (ex-info "Invalid basic info" (s/explain-data :resp/basic-info info))))))
 
 (defn add-basic-info* [conn info]
-  (d/transact conn (add-basic-info-tx info)))
+  @(d/transact conn (add-basic-info-tx info)))
 
 (defn add-basic-info [db info]
   (add-basic-info* (:conn db) info))
@@ -322,7 +322,7 @@
     :player/temp-api-key api-key}])
 
 (defn add-api-key* [conn api-key]
-  (d/transact conn (add-api-key-tx api-key)))
+  @(d/transact conn (add-api-key-tx api-key)))
 
 (defn add-api-key [db api-key]
   (add-api-key* (:conn db) api-key))
@@ -331,14 +331,14 @@
 (defn remove-temp-api-key* [conn api-key]
   (let [entity-ids (d/q '[:find [?p ...] :in $ ?k :where [?p :player/temp-api-key ?k]]
                         (d/db conn) api-key)]
-    (d/transact conn
-                (into [] (comp (filter identity)
-                               (map (fn [entid] [:db/retract entid :player/temp-api-key api-key])))
-                      entity-ids)
-                #_(filterv (fn [[_ entid _ _]] entid)
-                           (mapv (fn [entid]
-                                   [:db/retract entid :player/temp-api-key api-key])
-                                 temp-entids)))))
+    @(d/transact conn
+                 (into [] (comp (filter identity)
+                                (map (fn [entid] [:db/retract entid :player/temp-api-key api-key])))
+                       entity-ids)
+                 #_(filterv (fn [[_ entid _ _]] entid)
+                            (mapv (fn [entid]
+                                    [:db/retract entid :player/temp-api-key api-key])
+                                  temp-entids)))))
 
 (defn remove-temp-api-key [db api-key]
   (log/info "Removing temp api key" api-key)
@@ -347,11 +347,11 @@
 (defn remove-api-key* [conn api-key]
   (let [player-entid (->> api-key (player-by-api-key* (d/db conn)) :db/id)
         temp-entids (d/q '[:find [?p ...] :in $ ?k :where [?p :player/temp-api-key ?k]] (d/db conn) api-key)]
-    (d/transact conn (filterv (fn [[_ entid _ _]] entid)
-                              (conj (mapv (fn [entid]
-                                            [:db/retract entid :player/temp-api-key api-key])
-                                          temp-entids)
-                                    [:db/retract player-entid :player/api-key api-key])))))
+    @(d/transact conn (filterv (fn [[_ entid _ _]] entid)
+                               (conj (mapv (fn [entid]
+                                             [:db/retract entid :player/temp-api-key api-key])
+                                           temp-entids)
+                                     [:db/retract player-entid :player/api-key api-key])))))
 
 (defn remove-api-key [db api-key]
   (log/info "Removing api key" api-key)
@@ -392,7 +392,7 @@
   (let [db (d/db conn)
         ids (d/q '[:find [?id ...] :where [_ :player/torn-id ?id]] db)]
     (doseq [id ids]
-      (d/transact conn [(add-tempid (assoc (estimate-stats* db id) :player/torn-id id))]))))
+      @(d/transact conn [(add-tempid (assoc (estimate-stats* db id) :player/torn-id id))]))))
 
 (defn renew-difficulties [db]
   (renew-difficulties* (:conn db)))

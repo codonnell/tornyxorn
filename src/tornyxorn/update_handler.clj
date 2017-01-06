@@ -95,7 +95,7 @@
 (defmethod handle-update :msg/unknown-player
   [db _ notify-chan _ {:keys [msg/resp] :as msg}]
   (let [with-difficulties (update msg :msg/resp merge (db/estimate-stats db (:player/torn-id resp)))]
-    #_(log/info (:msg/resp with-difficulties))
+    (log/debug (:msg/resp with-difficulties))
     (store-update db with-difficulties)
     (>!! notify-chan with-difficulties)))
 
