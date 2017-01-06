@@ -106,7 +106,7 @@
 (defn add-priority-ids! [priority-ids new-ids]
   (dosync (alter priority-ids (fn [id-set] (reduce conj id-set new-ids)))))
 
-(defrecord UpdateCreator [db req-chan api-chan update-chan faction-ids api-key
+(defrecord UpdateCreator [db req-chan api-chan update-chan faction-ids api-keys
                           priority-ids finish-faction finish-players]
   component/Lifecycle
   (start [component]
@@ -114,7 +114,7 @@
           finish-players (chan)
           token-buckets (-> component :torn-api :token-buckets)
           priority-ids (ref #{})]
-      (continuously-update-faction-attacks db api-chan token-buckets faction-ids api-key finish-faction)
+      (continuously-update-faction-attacks db api-chan token-buckets faction-ids api-keys finish-faction)
       (continuously-update-players db api-chan priority-ids finish-players)
       (go-loop [msg (<! req-chan)]
         (log/info (log-string msg))
