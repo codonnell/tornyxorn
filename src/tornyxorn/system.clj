@@ -66,8 +66,13 @@
                       (new-update-creator {:req-chan req-chan
                                            :api-chan api-chan
                                            :update-chan update-chan
-                                           :faction-id (Integer. (env :faction-id))
-                                           :api-key (env :api-key)})
+                                           :faction-ids (into [] (map #(Integer. %)) (string/split (env :faction-ids) #","))
+                                           :api-keys (into [] (string/split (env :api-keys) #","))}
+                                          #_{:req-chan req-chan
+                                             :api-chan api-chan
+                                             :update-chan update-chan
+                                             :faction-id (Integer. (env :faction-id))
+                                             :api-key (env :api-key)})
                       [:db :torn-api])
      :torn-api (component/using
                 (new-torn-api {:api-chan api-chan
